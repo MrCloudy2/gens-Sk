@@ -758,10 +758,18 @@ command /buygen <text>:
 
 
 #displays the balance of a player
-command /balance:
+#player can type shortuct /bal or /balance of any player
+command /balance [<offlineplayer>]:
+	permission: gens.balance.other
+	aliases: /bal
 	trigger:
-		set {_bal} to managePlayerBalance(player, "get", "") parsed as number
-		send "&aYour balance: &2$%{_bal}%"
+		if arg-1 is set:
+			set {_bal} to managePlayerBalance(arg-1, "get", "") parsed as number
+			send "&a%arg-1%'s balance: &2$%{_bal}%"
+		else:
+			set {_bal} to managePlayerBalance(player, "get", "") parsed as number
+			send "&a%player%'s balance: &2$%{_bal}%"
+
 
 
 #function to create item creator GUIs
@@ -1984,22 +1992,29 @@ on break:
 		cancel event
 #used for instabreaking gens (maybe add having to shift and for upgrade too)
 on left click:
-	if string tag "minecraft:custom_data;gens;block_data;id" of nbt of event-block is set:
-		string tag "minecraft:custom_data;gens;block_data;owner" of nbt of event-block = player's uuid:
-			{gens::%player's uuid%::placed_gen_locations::*} contains location of event-block:
-				set {_genID} to string tag "minecraft:custom_data;gens;block_data;id" of nbt of event-block
-				set {_genItem} to getGenItem({_genID})
-				remove location of event-block from {gens::%player's uuid%::placed_gen_locations::*}
-				set block at location of event-block to air
-				give {_genItem} to player
+	if player is sneaking:
+		if {clickcool::%player%} is set:
+			set {_diff} to now - {clickcool::%player%}
+			if difference between {clickcool::%player%} and now is less than 0.1 second:
+				stop
+		set {clickcool::%player%} to now
+		if string tag "minecraft:custom_data;gens;block_data;id" of nbt of event-block is set:
+			string tag "minecraft:custom_data;gens;block_data;owner" of nbt of event-block = player's uuid:
+				{gens::%player's uuid%::placed_gen_locations::*} contains location of event-block:
+					set {_genID} to string tag "minecraft:custom_data;gens;block_data;id" of nbt of event-block
+					set {_genItem} to getGenItem({_genID})
+					remove location of event-block from {gens::%player's uuid%::placed_gen_locations::*}
+					set block at location of event-block to air
+					give {_genItem} to player
+				else:
+					set block at location of event-block to air
 			else:
-				set block at location of event-block to air
-		else:
-			cancel event
-			send "&cThis isn't your gen!" to player
-			set {_p} to string tag "minecraft:custom_data;gens;block_data;owner" of nbt of event-block parsed as offlineplayer
-			{gens::%{_p}'s uuid%::placed_gen_locations::*} does not contain location of event-block:
-				set block at location of event-block to air
+				cancel event
+				send "&cThis isn't your gen!" to player
+				set {_p} to string tag "minecraft:custom_data;gens;block_data;owner" of nbt of event-block parsed as offlineplayer
+				{gens::%{_p}'s uuid%::placed_gen_locations::*} does not contain location of event-block:
+					set block at location of event-block to air
+					
 #function to place a generator
 function placeGen(P: player, ID: string, loc: location):
 	set {_Block} to "%{gens::gen::%{_ID}%.item_type}%" parsed as itemtype
