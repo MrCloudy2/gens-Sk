@@ -1,5 +1,5 @@
 options:
-	gens_default_amount_cap: 10
+	gens_default_amount_cap: 15
  
 #Youtube Tutorial: https://www.youtube.com/watch?v=hwfqKDZykl0
  
@@ -102,29 +102,11 @@ on right click on chest:
 command /shop:
 	trigger:
 		set {_gui} to a new chest inventory with 3 row named "&6Server Shop"
-		set slot 0 of {_gui} to green stained glass pane named "&7"
-		set slot 1 of {_gui} to green stained glass pane named "&7"
-		set slot 2 of {_gui} to green stained glass pane named "&7"
-		set slot 3 of {_gui} to green stained glass pane named "&7"
-		set slot 4 of {_gui} to green stained glass pane named "&7"
-		set slot 5 of {_gui} to green stained glass pane named "&7"
-		set slot 6 of {_gui} to green stained glass pane named "&7"
-		set slot 7 of {_gui} to green stained glass pane named "&7"
-		set slot 8 of {_gui} to green stained glass pane named "&7"
-		set slot 9 of {_gui} to green stained glass pane named "&7"
-		set slot 17 of {_gui} to green stained glass pane named "&7"
-		set slot 18 of {_gui} to green stained glass pane named "&7"
-		set slot 19 of {_gui} to green stained glass pane named "&7"
-		set slot 20 of {_gui} to green stained glass pane named "&7"
-		set slot 21 of {_gui} to green stained glass pane named "&7"
-		set slot 22 of {_gui} to green stained glass pane named "&7"
-		set slot 23 of {_gui} to green stained glass pane named "&7"
-		set slot 24 of {_gui} to green stained glass pane named "&7"
-		set slot 25 of {_gui} to green stained glass pane named "&7"
-		set slot 26 of {_gui} to green stained glass pane named "&7"
-		set slot 11 of {_gui} to stone named "&aBuilding Blocks"
-		set slot 13 of {_gui} to name tag named "&eSell Wands"
-		set slot 15 of {_gui} to hopper named "&dSpecial"
+		set slot getBorderSlots(3) of {_gui} to lime stained glass pane named "&7"
+		set slot 10 of {_gui} to stone named "&aBuilding Blocks"
+		set slot 12 of {_gui} to name tag named "&eSell Wands"
+		set slot 14 of {_gui} to hopper named "&dSpecial"
+		set slot 16 of {_gui} to white wool named "&fGenerators"
 		open {_gui} to player
 
 on inventory click:
@@ -138,6 +120,8 @@ on inventory click:
 		openSellWandsShop(player)
 	if {_item} is hopper named "&dSpecial":
 		openSpecialShop(player)
+	if {_item} is white wool named "&fGenerators":
+		openGenshop(player)
 #building block shop
 function openBuildingBlocksShop(P: player):
 	
@@ -195,6 +179,24 @@ function openSpecialShop(P: player):
 	set slot 53 of {_gui} to arrow named "&aNext Page" with lore "&7Click to go to the next page."
 	open {_gui} to {_P}
 #buy events for shops
+function openGenshop(P:player):
+	set {_gui} to a new chest inventory with 6 row named "&fGenerators Shop"
+	set slot getBorderSlots(6) of {_gui} to purple stained glass pane named "&7"
+	set {_slot} to 10
+	set {_borderSlots::*} to getBorderSlots(6)
+	loop {gens::gen_ids::*}:
+		loop {_borderSlots::*}:
+			if {_slot} is loop-value-2:
+				set {_slot} to {_slot} + 1
+		set {_genID} to loop-value-1
+		set {_price} to {gens::gen::%{_genID}%.shop_price}
+		if {_price} is not set:
+			set {_price} to {gens::initial_price}
+		set {_item} to getGenItem({_genID})
+		set lore of {_item} to colored "&ePrice: &a$%{_price}%", "&7Click to buy!"
+		set slot {_slot} of {_gui} to {_item}
+		add 1 to {_slot}
+	open {_gui} to {_P}
 on inventory click:
 	name of event-inventory = "&aBuilding Blocks Shop"
 	cancel event
@@ -484,7 +486,28 @@ on inventory click:
 	if {_item} is arrow named "&aNext Page":
 		# Handle next page logic here	
 
-
+on inventory click:
+	name of event-inventory = "&fGenerators Shop"
+	cancel event
+	set {_item} to event-item
+	set {_genID} to string tag "minecraft:custom_data;gens;item_data;id" of nbt of {_item}
+	if {_genID} is set:
+		set {_price} to {gens::gen::%{_genID}%.shop_price}
+		if {_price} is not set:
+			set {_price} to {gens::initial_price}
+		set {_balance} to managePlayerBalance(player, "get", "") parsed as number
+		if {_balance} >= {_price}:
+			managePlayerBalance(player, "remove", "amount:%{_price}%")
+			give player getGenItem({_genID})
+			send "&aYou bought &e%colored {gens::gen::%{_genID}%.name}% &afor &2$%{_price}%!"
+		else:
+			send "&cYou don't have enough money! Need $%{_price}%."
+	if {_item} is barrier named "&cClose Shop":
+		close inventory of player
+	if {_item} is arrow named "&aPrevious Page":
+		# Handle previous page logic here
+	if {_item} is arrow named "&aNext Page":
+		# Handle next page logic here
 
 
 
@@ -520,10 +543,14 @@ every 2 seconds:
 command /genshop:
 	trigger:
 		set {_gui} to a new chest inventory with 6 row named "&6Gen Shop"
-		set slot getBorderSlots(6) of {_gui} to gray stained glass pane named "&7"
+		set slot getBorderSlots(6) of {_gui} to purple stained glass pane named "&7"
 		set {_slot} to 10
+		set {_borderSlots::*} to getBorderSlots(6)
 		loop {gens::gen_ids::*}:
-			set {_genID} to loop-value
+			loop {_borderSlots::*}:
+				if {_slot} is loop-value-2:
+					set {_slot} to {_slot} + 1
+			set {_genID} to loop-value-1
 			set {_price} to {gens::gen::%{_genID}%.shop_price}
 			if {_price} is not set:
 				set {_price} to {gens::initial_price}
@@ -1898,7 +1925,7 @@ on right click:
 									send "&aGen Upgraded!" to player
 									placeGen(player, {gens::gen::%{_genID}%.upgrade_into_id}, location of event-block)
 								else:
-									send "&cYou can't afford this!" to player
+									send "&cYou can't afford this! You need %{_upgradePrice}-{_balance}% more" to player
 							else:
 								send "&cThis gen is maxxed." to player
 						else:
