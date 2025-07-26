@@ -1,0 +1,2021 @@
+options:
+	gens_default_amount_cap: 10
+ 
+#Youtube Tutorial: https://www.youtube.com/watch?v=hwfqKDZykl0
+ 
+#Commands:
+#    /managePlayerBalance <offlineplayer> <add,remove,set,get> [<number>]
+#    /managePlayerGenCount <offlineplayer> <add,remove,set,get> [<integer>]
+#    /genDropCreator
+#    /getGenDrop <gen_drop_id> [<amount>] [<player>]
+#    /genCreator
+#    /getGen <gen_id> [<amount>] [<player>]
+#    /sell [<drop_id>]
+#    /buygen <gen_id>
+#    /Balance
+
+#Functions:
+#    managePlayerBalance(P: player, Action: string, extraData: string) :: string:
+#    managePlayerGensCount(P: player, Action: string, extraData: string) :: string:
+#    itemCreatorGUIs(P: player, type: string, extraData: string):
+#    getGenDropItem(ID: string, extraData: string) :: item:
+#    genCreatorGUIs(P: player, type: string):
+#    getGenItem(ID: string) :: item:
+#    getBorderSlots(A: int) :: integers:
+#    function placeGen(P: player, ID: string, loc: location):
+ 
+#gives you a specified multi wand for now, has to be added to shop later in wand section
+command /givewand <number>:
+	trigger:
+		if arg-1 is not set:
+			send "&cUsage: /givewand <multiplier>" to player
+			stop
+		set {_multiplier} to arg-1
+		if {_multiplier} is not set:
+			send "&cPlease enter a valid number for the multiplier!" to player
+			stop
+		set {_wand} to custom_sellwand_with_multiplier({_multiplier})
+		give player {_wand}
+		
+
+#sellwand functionality
+function custom_sellwand_with_multiplier(n: number) :: item:
+	set {_name} to "&6Sell Wand &7 %{_n}%x"
+	set {_wand} to name tag named {_name}
+	set {_lore::*} to "&7Use on a chest to sell its contents."
+	set lore of {_wand} to {_lore::*}
+	set int tag "minecraft:custom_data;Multi" of nbt of {_wand} to {_n}
+	#debug read form nbt
+
+	return {_wand}
+	
+on right click on chest:
+	if player is sneaking:
+		set {_wand} to player's tool
+		if {_wand} is not a name tag:
+			stop
+		set {_mult} to int tag "minecraft:custom_data;Multi" of nbt of {_wand}
+		if {_mult} is not set:
+			send "&cThis is not a valid Sell Wand." to player
+			stop
+		set {_moneyGained} to 0
+		set {_hasSellableItems} to false
+		set {_loc} to location of event-block
+		loop inventory of event-block:
+			set {_item} to loop-value
+			if {_item} is not air:
+				set {_amt} to amount of {_item}
+				if string tag "minecraft:custom_data;gens;item_data;type" of nbt of {_item} is set:
+					set {_type} to string tag "minecraft:custom_data;gens;item_data;type" of nbt of {_item}
+					set {_id} to string tag "minecraft:custom_data;gens;item_data;id" of nbt of {_item}
+					if {_type} = "drop":
+						set {_price} to "%{gens::items::item::%{_id}%.sell_price}%" parsed as number
+						set {_price} to {_price} * {_mult}
+						if {_price} > 0:
+							add {_amt} * {_price} to {_moneyGained}
+							remove {_item} from inventory of event-block
+							set {_hasSellableItems} to true
+		if {_hasSellableItems} is false:
+			send "&cNo sellable items found in the chest." to player
+		else:
+			if {_moneyGained} > 0:
+				managePlayerBalance(player, "add", "amount:%{_moneyGained}%")
+				send "&aYou gained &2+$%{_moneyGained}%&a from selling items in the chest." to player
+			else:
+				send "&cNo money gained from selling items." to player
+							
+
+
+		
+		
+
+
+
+
+
+
+
+
+
+
+# /shop command functionlaity (fix corners with alredy implemented function for corners)
+command /shop:
+	trigger:
+		set {_gui} to a new chest inventory with 3 row named "&6Server Shop"
+		set slot 0 of {_gui} to green stained glass pane named "&7"
+		set slot 1 of {_gui} to green stained glass pane named "&7"
+		set slot 2 of {_gui} to green stained glass pane named "&7"
+		set slot 3 of {_gui} to green stained glass pane named "&7"
+		set slot 4 of {_gui} to green stained glass pane named "&7"
+		set slot 5 of {_gui} to green stained glass pane named "&7"
+		set slot 6 of {_gui} to green stained glass pane named "&7"
+		set slot 7 of {_gui} to green stained glass pane named "&7"
+		set slot 8 of {_gui} to green stained glass pane named "&7"
+		set slot 9 of {_gui} to green stained glass pane named "&7"
+		set slot 17 of {_gui} to green stained glass pane named "&7"
+		set slot 18 of {_gui} to green stained glass pane named "&7"
+		set slot 19 of {_gui} to green stained glass pane named "&7"
+		set slot 20 of {_gui} to green stained glass pane named "&7"
+		set slot 21 of {_gui} to green stained glass pane named "&7"
+		set slot 22 of {_gui} to green stained glass pane named "&7"
+		set slot 23 of {_gui} to green stained glass pane named "&7"
+		set slot 24 of {_gui} to green stained glass pane named "&7"
+		set slot 25 of {_gui} to green stained glass pane named "&7"
+		set slot 26 of {_gui} to green stained glass pane named "&7"
+		set slot 11 of {_gui} to stone named "&aBuilding Blocks"
+		set slot 13 of {_gui} to name tag named "&eSell Wands"
+		set slot 15 of {_gui} to hopper named "&dSpecial"
+		open {_gui} to player
+
+on inventory click:
+	#fisrst shop menu
+	name of event-inventory = "&6Server Shop"
+	cancel event
+	set {_item} to event-item
+	if {_item} is stone named "&aBuilding Blocks":
+		openBuildingBlocksShop(player)
+	if {_item} is name tag named "&eSell Wands":
+		openSellWandsShop(player)
+	if {_item} is hopper named "&dSpecial":
+		openSpecialShop(player)
+#building block shop
+function openBuildingBlocksShop(P: player):
+	
+	set {_gui} to a new chest inventory with 6 row named "&aBuilding Blocks Shop"
+	# Example items, add more as needed
+	set slot 10 of {_gui} to stone named "&fStone" with lore "&aPrice: $10", "&7Click to buy!"
+	set {_stoneprice} to 10
+	set slot 11 of {_gui} to dirt named "&fDirt" with lore "&aPrice: $5", "&7Click to buy!"
+	set {_dirtprice} to 5
+	set slot 12 of {_gui} to cobblestone named "&fCobblestone" with lore "&aPrice: $8", "&7Click to buy!"
+	set slot 13 of {_gui} to oak_planks named "&fOak Planks" with lore "&aPrice: $12", "&7Click to buy!"
+	set slot 14 of {_gui} to glass named "&fGlass" with lore "&aPrice: $15", "&7Click to buy!"
+	set slot 15 of {_gui} to bricks named "&fBricks" with lore "&aPrice: $20", "&7Click to buy!"
+	set slot 16 of {_gui} to gold_block named "&fGold Block" with lore "&aPrice: $50", "&7Click to buy!"
+	set slot 19 of {_gui} to diamond_block named "&fDiamond Block" with lore "&aPrice: $100", "&7Click to buy!"
+	set slot 20 of {_gui} to emerald_block named "&fEmerald Block" with lore "&aPrice: $150", "&7Click to buy!"
+	set slot 21 of {_gui} to obsidian named "&fObsidian" with lore "&aPrice: $200", "&7Click to buy!"
+	set slot 22 of {_gui} to end_stone named "&fEnd Stone" with lore "&aPrice: $250", "&7Click to buy!"
+	set slot 23 of {_gui} to quartz_block named "&fQuartz Block" with lore "&aPrice: $300", "&7Click to buy!"
+	set slot 24 of {_gui} to sea_lantern named "&fSea Lantern" with lore "&aPrice: $350", "&7Click to buy!"
+	set slot 25 of {_gui} to prismarine named "&fPrismarine" with lore "&aPrice: $400", "&7Click to buy!"
+	set slot 28 of {_gui} to ender_chest named "&fEnder Chest" with lore "&aPrice: $500", "&7Click to buy!"
+	set slot 49 of {_gui} to barrier named "&cClose Shop" with lore "&7Click to close the shop."
+	set slot 45 of {_gui} to arrow named "&aPrevious Page" with lore "&7Click to go to the previous page."
+	set slot 53 of {_gui} to arrow named "&aNext Page" with lore "&7Click to go to the next page."
+	# Add more items as needed
+	# Ensure to handle pagination if you have more items than fit in the GUI
+	open {_gui} to {_P}
+#sellwand shop (emplty for now)
+function openSellWandsShop(P: player):
+	
+	set {_gui} to a new chest inventory with 6 row named "&eSell Wands Shop"
+	# Example items, add more as needed
+	set slot 10 of {_gui} to name tag named "&eSell Wand 1x" with lore "&aPrice: $10000", "&7Click to buy!"
+	open {_gui} to {_P}
+#special shop for redstone and other components
+function openSpecialShop(P: player):
+	set {_gui} to a new chest inventory with 6 row named "&dSpecial Shop"
+	# Example items, add more as needed
+	set slot 10 of {_gui} to hopper named "&dHopper" with lore "&aPrice: $1000", "&7Click to buy!"
+	set slot 11 of {_gui} to water_bucket named "&dWater Bucket" with lore "&aPrice: $100", "&7Click to buy!"
+	set slot 12 of {_gui} to lava_bucket named "&dLava Bucket" with lore "&aPrice: $500", "&7Click to buy!"
+	set slot 13 of {_gui} to soul_sand named "&dSoul Sand" with lore "&aPrice: $400", "&7Click to buy!"
+	set slot 14 of {_gui} to packed_ice named "&dPacked Ice" with lore "&aPrice: $1000", "&7Click to buy!"
+	set slot 15 of {_gui} to honey_block named "&dHoney Block" with lore "&aPrice: $1000", "&7Click to buy!"
+	set slot 16 of {_gui} to slime_block named "&dSlime Block" with lore "&aPrice: $2000", "&7Click to buy!"
+	set slot 19 of {_gui} to piston named "&dPiston" with lore "&aPrice: $900", "&7Click to buy!"
+	set slot 20 of {_gui} to redstone named "&dRedstone" with lore "&aPrice: $30", "&7Click to buy!"
+	set slot 21 of {_gui} to repeater named "&dRedstone Repeater" with lore "&aPrice: $100", "&7Click to buy!"
+	set slot 22 of {_gui} to comparator named "&dRedstone Comparator" with lore "&aPrice: $300", "&7Click to buy!"
+	set slot 23 of {_gui} to redstone_torch named "&dRedstone Torch" with lore "&aPrice: $35", "&7Click to buy!"
+	set slot 24 of {_gui} to redstone_block named "&dRedstone Block" with lore "&aPrice: $270", "&7Click to buy!"
+	set slot 49 of {_gui} to barrier named "&cClose Shop" with lore "&7Click to close the shop."
+	set slot 45 of {_gui} to arrow named "&aPrevious Page" with lore "&7Click to go to the previous page."
+	set slot 53 of {_gui} to arrow named "&aNext Page" with lore "&7Click to go to the next page."
+	open {_gui} to {_P}
+#buy events for shops
+on inventory click:
+	name of event-inventory = "&aBuilding Blocks Shop"
+	cancel event
+	set {_item} to event-item
+	if {_item} is stone named "&fStone":
+		set {_price} to 10
+		set {_balance} to managePlayerBalance(player, "get", "") parsed as number
+		if {_balance} >= {_price}:
+			managePlayerBalance(player, "remove", "amount:%{_price}%")
+			give player stone
+			send "&aYou bought Stone for $%{_price}%!"
+		else:
+			send "&cNot enough money!"
+	if {_item} is dirt named "&fDirt":
+		set {_price} to 5
+		set {_balance} to managePlayerBalance(player, "get", "") parsed as number
+		if {_balance} >= {_price}:
+			managePlayerBalance(player, "remove", "amount:%{_price}%")
+			give player dirt
+			send "&aYou bought Dirt for $%{_price}%!"
+		else:
+			send "&cNot enough money!"
+	if {_item} is cobblestone named "&fCobblestone":
+		set {_price} to 8
+		set {_balance} to managePlayerBalance(player, "get", "") parsed as number
+		if {_balance} >= {_price}:
+			managePlayerBalance(player, "remove", "amount:%{_price}%")
+			give player cobblestone
+			send "&aYou bought Cobblestone for $%{_price}%!"
+		else:
+			send "&cNot enough money!"
+	if {_item} is oak_planks named "&fOak Planks":
+		set {_price} to 12
+		set {_balance} to managePlayerBalance(player, "get", "") parsed as number
+		if {_balance} >= {_price}:
+			managePlayerBalance(player, "remove", "amount:%{_price}%")
+			give player oak planks
+			send "&aYou bought Oak Planks for $%{_price}%!"
+		else:
+			send "&cNot enough money!"
+	if {_item} is glass named "&fGlass":
+		set {_price} to 15
+		set {_balance} to managePlayerBalance(player, "get", "") parsed as number
+		if {_balance} >= {_price}:
+			managePlayerBalance(player, "remove", "amount:%{_price}%")
+			give player glass
+			send "&aYou bought Glass for $%{_price}%!"
+		else:
+			send "&cNot enough money!"
+	if {_item} is bricks named "&fBricks":
+		set {_price} to 20
+		set {_balance} to managePlayerBalance(player, "get", "") parsed as number
+		if {_balance} >= {_price}:
+			managePlayerBalance(player, "remove", "amount:%{_price}%")
+			give player bricks
+			send "&aYou bought Bricks for $%{_price}%!"
+		else:
+			send "&cNot enough money!"
+	if {_item} is gold_block named "&fGold Block":
+		set {_price} to 50
+		set {_balance} to managePlayerBalance(player, "get", "") parsed as number
+		if {_balance} >= {_price}:
+			managePlayerBalance(player, "remove", "amount:%{_price}%")
+			give player gold block
+			send "&aYou bought Gold Block for $%{_price}%!"
+		else:
+			send "&cNot enough money!"
+	if {_item} is diamond_block named "&fDiamond Block":
+		set {_price} to 100
+		set {_balance} to managePlayerBalance(player, "get", "") parsed as number
+		if {_balance} >= {_price}:
+			managePlayerBalance(player, "remove", "amount:%{_price}%")
+			give player diamond block
+			send "&aYou bought Diamond Block for $%{_price}%!"
+		else:
+			send "&cNot enough money!"
+	if {_item} is emerald_block named "&fEmerald Block":
+		set {_price} to 150
+		set {_balance} to managePlayerBalance(player, "get", "") parsed as number
+		if {_balance} >= {_price}:
+			managePlayerBalance(player, "remove", "amount:%{_price}%")
+			give player emerald block
+			send "&aYou bought Emerald Block for $%{_price}%!"
+		else:
+			send "&cNot enough money!"
+	if {_item} is obsidian named "&fObsidian":
+		set {_price} to 200
+		set {_balance} to managePlayerBalance(player, "get", "") parsed as number
+		if {_balance} >= {_price}:
+			managePlayerBalance(player, "remove", "amount:%{_price}%")
+			give player obsidian
+			send "&aYou bought Obsidian for $%{_price}%!"
+		else:
+			send "&cNot enough money!"
+	if {_item} is end_stone named "&fEnd Stone":
+		set {_price} to 250
+		set {_balance} to managePlayerBalance(player, "get", "") parsed as number
+		if {_balance} >= {_price}:
+			managePlayerBalance(player, "remove", "amount:%{_price}%")
+			give player end stone
+			send "&aYou bought End Stone for $%{_price}%!"
+		else:
+			send "&cNot enough money!"
+	if {_item} is quartz_block named "&fQuartz Block":
+		set {_price} to 300
+		set {_balance} to managePlayerBalance(player, "get", "") parsed as number
+		if {_balance} >= {_price}:		
+			managePlayerBalance(player, "remove", "amount:%{_price}%")
+			give player quartz block
+			send "&aYou bought Quartz Block for $%{_price}%!"
+		else:
+			send "&cNot enough money!"
+	if {_item} is sea_lantern named "&fSea Lantern":
+		set {_price} to 350
+		set {_balance} to managePlayerBalance(player, "get", "") parsed as number
+		if {_balance} >= {_price}:
+			managePlayerBalance(player, "remove", "amount:%{_price}%")
+			give player sea lantern
+			send "&aYou bought Sea Lantern for $%{_price}%!"
+		else:
+			send "&cNot enough money!"
+	if {_item} is prismarine named "&fPrismarine":
+		set {_price} to 400
+		set {_balance} to managePlayerBalance(player, "get", "") parsed as number
+		if {_balance} >= {_price}:
+			managePlayerBalance(player, "remove", "amount:%{_price}%")
+			give player prismarine
+			send "&aYou bought Prismarine for $%{_price}%!"
+		else:
+			send "&cNot enough money!"
+	if {_item} is ender_chest named "&fEnder Chest":
+		set {_price} to 500
+		set {_balance} to managePlayerBalance(player, "get", "") parsed as number
+		if {_balance} >= {_price}:
+			managePlayerBalance(player, "remove", "amount:%{_price}%")
+			give player ender chest
+			send "&aYou bought Ender Chest for $%{_price}%!"
+		else:
+			send "&cNot enough money!"
+	if {_item} is barrier named "&cClose Shop":
+		close inventory of player
+	if {_item} is arrow named "&aPrevious Page":
+		# Handle previous page logic here
+	if {_item} is arrow named "&aNext Page":
+		# Handle next page logic here	
+
+on inventory click:
+	name of event-inventory = "&eSell Wands Shop"
+	cancel event
+	set {_item} to event-item
+	if {_item} is name tag named "&eSell Wand 1x":
+		set {_wandMulti} to 1
+		set {_price} to 10000
+		set {_balance} to managePlayerBalance(player, "get", "") parsed as number
+		if {_balance} >= {_price}:
+			managePlayerBalance(player, "remove", "amount:%{_price}%")
+			give player custom_sellwand_with_multiplier({_wandMulti})
+			send "&aYou bought a Sell Wand 1x for $%{_price}%!"
+		else:
+			send "&cNot enough money!"
+
+on inventory click:
+	name of event-inventory = "&dSpecial Shop"
+	cancel event
+	set {_item} to event-item
+	if {_item} is hopper named "&dHopper":
+		set {_price} to 1000
+		set {_balance} to managePlayerBalance(player, "get", "") parsed as number
+		if {_balance} >= {_price}:
+			managePlayerBalance(player, "remove", "amount:%{_price}%")
+			give player hopper
+			send "&aYou bought a Hopper for $%{_price}%!"
+		else:
+			send "&cNot enough money!"
+	if {_item} is water_bucket named "&dWater Bucket":
+		set {_price} to 100
+		set {_balance} to managePlayerBalance(player, "get", "") parsed as number
+		if {_balance} >= {_price}:
+			managePlayerBalance(player, "remove", "amount:%{_price}%")
+			give player water bucket
+			send "&aYou bought a Water Bucket for $%{_price}%!"
+		else:
+			send "&cNot enough money!"
+	if {_item} is lava_bucket named "&dLava Bucket":
+		set {_price} to 500
+		set {_balance} to managePlayerBalance(player, "get", "") parsed as number
+		if {_balance} >= {_price}:
+			managePlayerBalance(player, "remove", "amount:%{_price}%")
+			give player lava bucket
+			send "&aYou bought a Lava Bucket for $%{_price}%!"
+		else:
+			send "&cNot enough money!"
+	if {_item} is soul_sand named "&dSoul Sand":
+		set {_price} to 400
+		set {_balance} to managePlayerBalance(player, "get", "") parsed as number
+		if {_balance} >= {_price}:
+			managePlayerBalance(player, "remove", "amount:%{_price}%")
+			give player soul sand
+			send "&aYou bought Soul Sand for $%{_price}%!"
+		else:
+			send "&cNot enough money!"
+	if {_item} is packed_ice named "&dPacked Ice":
+		set {_price} to 1000
+		set {_balance} to managePlayerBalance(player, "get", "") parsed as number
+		if {_balance} >= {_price}:
+			managePlayerBalance(player, "remove", "amount:%{_price}%")
+			give player packed ice
+			send "&aYou bought Packed Ice for $%{_price}%!"
+		else:
+			send "&cNot enough money!"
+	if {_item} is honey_block named "&dHoney Block":
+		set {_price} to 1000
+		set {_balance} to managePlayerBalance(player, "get", "") parsed as number
+		if {_balance} >= {_price}:
+			managePlayerBalance(player, "remove", "amount:%{_price}%")
+			give player honey block
+			send "&aYou bought a Honey Block for $%{_price}%!"
+		else:	
+			send "&cNot enough money!"
+	if {_item} is slime_block named "&dSlime Block":
+		set {_price} to 2000
+		set {_balance} to managePlayerBalance(player, "get", "") parsed as number
+		if {_balance} >= {_price}:
+			managePlayerBalance(player, "remove", "amount:%{_price}%")
+			give player slime block
+			send "&aYou bought a Slime Block for $%{_price}%!"
+		else:
+			send "&cNot enough money!"
+	if {_item} is piston named "&dPiston":
+		set {_price} to 900
+		set {_balance} to managePlayerBalance(player, "get", "") parsed as number
+		if {_balance} >= {_price}:
+			managePlayerBalance(player, "remove", "amount:%{_price}%")
+			give player piston
+			send "&aYou bought a Piston for $%{_price}%!"
+		else:
+			send "&cNot enough money!"
+	if {_item} is redstone named "&dRedstone":
+		set {_price} to 30
+		set {_balance} to managePlayerBalance(player, "get", "") parsed as number
+		if {_balance} >= {_price}:
+			managePlayerBalance(player, "remove", "amount:%{_price}%")
+			give player redstone
+			send "&aYou bought Redstone for $%{_price}%!"
+		else:
+			send "&cNot enough money!"
+	if {_item} is repeater named "&dRedstone Repeater":
+		set {_price} to 100
+		set {_balance} to managePlayerBalance(player, "get", "") parsed as number
+		if {_balance} >= {_price}:
+			managePlayerBalance(player, "remove", "amount:%{_price}%")
+			give player repeater
+			send "&aYou bought a Redstone Repeater for $%{_price}%!"
+		else:
+			send "&cNot enough money!"
+	if {_item} is comparator named "&dRedstone Comparator":
+		set {_price} to 300
+		set {_balance} to managePlayerBalance(player, "get", "") parsed as number
+		if {_balance} >= {_price}:
+			managePlayerBalance(player, "remove", "amount:%{_price}%")
+			give player comparator
+			send "&aYou bought a Redstone Comparator for $%{_price}%!"
+		else:
+			send "&cNot enough money!"
+	if {_item} is redstone torch named "&dRedstone Torch":
+		set {_price} to 35
+		set {_balance} to managePlayerBalance(player, "get", "") parsed as number
+		if {_balance} >= {_price}:
+			managePlayerBalance(player, "remove", "amount:%{_price}%")
+			give player redstone torch
+			send "&aYou bought a Redstone Torch for $%{_price}%!"
+		else:
+			send "&cNot enough money!"
+	if {_item} is redstone block named "&dRedstone Block":
+		set {_price} to 270
+		set {_balance} to managePlayerBalance(player, "get", "") parsed as number
+		if {_balance} >= {_price}:
+			managePlayerBalance(player, "remove", "amount:%{_price}%")
+			give player redstone block
+			send "&aYou bought a Redstone Block for $%{_price}%!"
+		else:
+			send "&cNot enough money!"
+	if {_item} is barrier named "&cClose Shop":
+		close inventory of player
+	if {_item} is arrow named "&aPrevious Page":
+		# Handle previous page logic here
+	if {_item} is arrow named "&aNext Page":
+		# Handle next page logic here	
+
+
+
+
+
+#command that lists all the upgrades from one to another gen prices
+command /listGenUpgradePrices:
+	permission: op
+	trigger:
+		loop {gens::gen_ids::*}:
+			send "&eGen: %loop-value% &7-> &aUpgrade Into: %{gens::gen::%loop-value%.upgrade_into_id}% &7| &aUpgrade Price: %{gens::gen::%loop-value%.upgrade_price}%"
+
+
+#startup loading event
+on load:
+	send "" to console
+	send "&a[Cloudy Gens] Gens Loaded." to console
+	send "" to console
+	set {gens::initial_price} to 15 if {gens::initial_price} is not set
+#player check loop for sideboard (with fastboard) (make faster maybe)
+every 2 seconds:
+	loop all players:
+		set title of fastboard of loop-player to "Cloudy Gens"
+		set line 1 of fastboard of loop-player to "Online Players: %size of all players%"
+		
+		set {_bal} to {economy::%loop-player's uuid%::balance}
+		set line 2 of fastboard of loop-player to "Your Balance: $%{_bal}%"
+		
+		set {_placed} to size of {gens::%loop-player's uuid%::placed_gen_locations::*}
+		set {_cap} to {gens::%loop-player's uuid%::gen_cap}
+		set line 3 of fastboard of loop-player to "Your Gens: %{_placed}%/%{_cap}%"
+	
+
+#command for generator shop (maybe add to /shop later)
+command /genshop:
+	trigger:
+		set {_gui} to a new chest inventory with 6 row named "&6Gen Shop"
+		set slot getBorderSlots(6) of {_gui} to gray stained glass pane named "&7"
+		set {_slot} to 10
+		loop {gens::gen_ids::*}:
+			set {_genID} to loop-value
+			set {_price} to {gens::gen::%{_genID}%.shop_price}
+			if {_price} is not set:
+				set {_price} to {gens::initial_price}
+			set {_item} to getGenItem({_genID})
+			set lore of {_item} to colored "&ePrice: &a$%{_price}%", "&7Click to buy!"
+			set slot {_slot} of {_gui} to {_item}
+			add 1 to {_slot}
+		open {_gui} to player
+#events for /genshop
+on inventory click:
+	name of event-inventory = "&6Gen Shop"
+	cancel event
+	set {_item} to event-item
+	set {_genID} to string tag "minecraft:custom_data;gens;item_data;id" of nbt of {_item}
+	{_genID} is set:
+		set {_price} to {gens::gen::%{_genID}%.shop_price}
+		if {_price} is not set:
+			set {_price} to {gens::initial_price}
+		set {_balance} to managePlayerBalance(player, "get", "") parsed as number
+		if {_balance} >= {_price}:
+			managePlayerBalance(player, "remove", "amount:%{_price}%")
+			give player getGenItem({_genID})
+			send "&aYou bought &e%colored {gens::gen::%{_genID}%.name}% &afor &2$%{_price}%!"
+		else:
+			send "&cYou don't have enough money! Need $%{_price}%."
+
+
+
+# UNUSED was ment to set the price of a gen that is the first in a chain of upgrades (?delete?, or impliment gen chain calculation)
+command /setGenInitialPrice <number>:
+	permission: op
+	trigger:
+		set {gens::initial_price} to arg-1
+		send "&aInitial gen price set to &2$%arg-1%&a."
+#command to set a price of a gen to be used in the genshop (have to implement it into /genCreator)
+command /setgenprice:
+	permission: op
+	trigger:
+		send "&aAvailable Gen IDs:"
+		send "  &e%{gens::gen_ids::*}%"
+		send "&aType the gen ID you want to set the shop price for. &cType 'end' to cancel."
+		set metadata tag "chatUsage" of player to "setgenprice_step1"
+#chat events for /setgenprice
+on chat:
+	if metadata tag "chatUsage" of player is "setgenprice_step1":
+		cancel event
+		set {_id} to uncolored message
+		if {_id} = "end":
+			delete metadata tag "chatUsage" of player
+			send "&cCancelled."
+			stop
+		if {gens::gen_ids::*} contains {_id}:
+			set metadata tag "setgenprice_id" of player to {_id}
+			set metadata tag "chatUsage" of player to "setgenprice_step2"
+			send "&aType the new shop price for gen &e%{_id}%&a. &cType 'end' to cancel."
+		else:
+			send "&cGen ID not found! Try again or type 'end' to cancel."
+		stop
+	if metadata tag "chatUsage" of player is "setgenprice_step2":
+		cancel event
+		set {_price} to uncolored message
+		if {_price} = "end":
+			delete metadata tag "chatUsage" of player
+			delete metadata tag "setgenprice_id" of player
+			send "&cCancelled."
+			stop
+		set {_priceNum} to {_price} parsed as number
+		if {_priceNum} is set:
+			if {_priceNum} >= 0:
+				set {_id} to metadata tag "setgenprice_id" of player
+				set {gens::gen::%{_id}%.shop_price} to {_priceNum}
+				send "&aSet shop price for gen &e%{_id}% &ato &2$%{_priceNum}%&a."
+				delete metadata tag "chatUsage" of player
+				delete metadata tag "setgenprice_id" of player
+			else:
+				send "&cInvalid price! Enter a number or type 'end' to cancel."
+			stop
+
+
+#function to manage player balance for online players
+function managePlayerBalance(P: player, Action: string, extraData: string) :: string:
+	set {_split::*} to split {_extraData} by ","
+	loop {_split::*}:
+		if loop-value contains "amount:":
+			set {_amount} to loop-value
+			replace all "amount:" with "" in {_amount}
+			set {_amount} to "%{_amount}%" parsed as number
+	if {_Action} = "add":
+		{_amount} is set:
+			add {_amount} to {economy::%{_P}'s uuid%::balance}
+			return "added %{_amount}% to %{_P}%'s balance"
+	else if {_Action} = "remove":
+		{_amount} is set:
+			remove {_amount} from {economy::%{_P}'s uuid%::balance}
+			return "removed %{_amount}% from %{_P}%'s balance"
+	else if {_Action} = "set":
+		{_amount} is set:
+			set {economy::%{_P}'s uuid%::balance} to {_amount}
+			return "set %{_P}%'s balance to %{_amount}%"
+	else if {_Action} = "get":
+		return "%{economy::%{_P}'s uuid%::balance}%"
+	else:
+		return ""
+#tab completions for /managePlayerBalance dbg only
+on tab complete of "/managePlayerBalance":
+	if player has permission "op":
+		set tab completions for position 2 to "add", "set", "get", "remove"
+#manage player balance command for offile players
+command /managePlayerBalance <offlineplayer> <text> [<number>]:
+	permission: op
+	trigger:
+		if arg-2 = "add":
+			arg-3 is set:
+				managePlayerBalance(arg-1, arg-2, "amount:%arg-3%")
+				send "&aAdded %arg-3% to %arg-1%'s balance!"
+			else:
+				send "&cPlease select an amount"
+		else if arg-2 = "remove":
+			arg-3 is set:
+				managePlayerBalance(arg-1, arg-2, "amount:%arg-3%")
+				send "&aRemoved %arg-3% from %arg-1%'s balance!"
+			else:
+				send "&cPlease select an amount"
+		else if arg-2 = "set":
+			arg-3 is set:
+				managePlayerBalance(arg-1, arg-2, "amount:%arg-3%")
+				send "&aSet %arg-1%'s balance to %arg-3%!"
+			else:
+				send "&cPlease select an amount"
+		else if arg-2 = "get":
+			send "&a%arg-1%'s balance is %managePlayerBalance(arg-1, arg-2, "")%!"
+		else:
+			send "&cPlease Select 'add' or 'set' or 'get' or 'remove'."
+#probaby execution of the offline /managePlayerBalance for players that log on
+on join:
+	set {gens::%player's uuid%::gen_cap} to {@gens_default_amount_cap} if {gens::%player's uuid%::gen_cap} is not set
+#function to manage players max gen count
+function managePlayerGensCount(P: player, Action: string, extraData: string) :: string:
+	set {_split::*} to split {_extraData} by ","
+	loop {_split::*}:
+		if loop-value contains "amount:":
+			set {_amount} to loop-value
+			replace all "amount:" with "" in {_amount}
+			set {_amount} to "%{_amount}%" parsed as integer
+	if {_Action} = "add":
+		{_amount} is set:
+			add {_amount} to {gens::%{_P}'s uuid%::gen_cap}
+			return "added %{_amount}% to %{_P}%'s gen cap"
+	else if {_Action} = "remove":
+		{_amount} is set:
+			remove {_amount} from {gens::%{_P}'s uuid%::gen_cap}
+			return "removed %{_amount}% from %{_P}%'s gen cap"
+	else if {_Action} = "set":
+		{_amount} is set:
+			set {gens::%{_P}'s uuid%::gen_cap} to {_amount}
+			return "set %{_P}%'s gen cap to %{_amount}%"
+	else if {_Action} = "get":
+		return "%{gens::%{_P}'s uuid%::gen_cap}%"
+	else:
+		return ""
+#tab compleations for /managePlayerGenCount
+on tab complete of "/managePlayerGenCount":
+	if player has permission "op":
+		set tab completions for position 2 to "add", "set", "get", "remove"
+#function to manage players max gen count (offline (no onjoin ?why?))
+command /managePlayerGenCount <offlineplayer> <text> [<int>]:
+	permission: op
+	trigger:
+		if arg-2 = "add":
+			arg-3 is set:
+				managePlayerGensCount(arg-1, arg-2, "amount:%arg-3%")
+				send "&aAdded %arg-3% to %arg-1%'s gen cap!"
+			else:
+				send "&cPlease select an amount"
+		else if arg-2 = "remove":
+			arg-3 is set:
+				managePlayerGensCount(arg-1, arg-2, "amount:%arg-3%")
+				send "&aRemoved %arg-3% from %arg-1%'s gen cap!"
+			else:
+				send "&cPlease select an amount"
+		else if arg-2 = "set":
+			arg-3 is set:
+				managePlayerGensCount(arg-1, arg-2, "amount:%arg-3%")
+				send "&aSet %arg-1%'s gen cap to %arg-3%!"
+			else:
+				send "&cPlease select an amount"
+		else if arg-2 = "get":
+			send "&a%arg-1%'s gen cap is %managePlayerGensCount(arg-1, arg-2, "")%!"
+		else:
+			send "&cPlease Select 'add' or 'set' or 'get' or 'remove'."
+#UNUSED old command to buy a gen before shop ?remove?
+command /buygen <text>:
+	trigger:
+		{gens::gen_ids::*} contains arg-1:
+			set {_price} to {gens::initial_price} # Set your gen price here, or use a variable per gen
+			set {_balance} to managePlayerBalance(player, "get", "") parsed as number
+			if {_balance} >= {_price}:
+				managePlayerBalance(player, "remove", "amount:%{_price}%")
+				give player getGenItem(arg-1)
+				send "&aYou bought a gen (%arg-1%) for %{_price}%!"
+			else:
+				send "&cYou don't have enough money! Need %{_price}%."
+		else:
+			send "&cGen ID not found!"
+
+
+#displays the balance of a player
+command /balance:
+	trigger:
+		set {_bal} to managePlayerBalance(player, "get", "") parsed as number
+		send "&aYour balance: &2$%{_bal}%"
+
+
+#function to create item creator GUIs
+function itemCreatorGUIs(P: player, type: string, extraData: string):
+	set {_split::*} to split {_extraData} by ","
+	loop {_split::*}:
+		if loop-value contains "lore_page:":
+			set {_lorePage} to loop-value
+			replace all "lore_page:" with "" in {_lorePage}
+			set {_lorePage} to "%{_lorePage}%" parsed as integer
+	if {_lorePage} is not set:
+		set {_lorePage} to 1
+	if {_type} = "front_page":
+		set {_m} to a new chest inventory with 3 row named "&6Gen Drop Item Creator"
+		set slot getBorderSlots(3) of {_m} to gray stained glass pane named "&7"
+		set {_new} to diamond named "&2New Item" with lore "&aclick to create a new item."
+		set string tag "minecraft:custom_data;clickData;1" of nbt of {_new} to "new_item"
+		set slot 11 of {_m} to {_new}
+		set {_edit} to item frame named "&6Edit Item" with lore "&eclick to edit a item."
+		set string tag "minecraft:custom_data;clickData;1" of nbt of {_edit} to "edit_item"
+		set slot 13 of {_m} to {_edit}
+		set {_delete} to barrier named "&4Delete Item" with lore "&cclick to delete a item."
+		set string tag "minecraft:custom_data;clickData;1" of nbt of {_delete} to "delete_item"
+		set slot 15 of {_m} to {_delete}
+		open {_m} to {_P}
+	if {_type} = "edit_item":
+		if metadata tag "gens;items;editing_id" of {_P} is set:
+			set {_ID} to metadata tag "gens;items;editing_id" of {_P}
+			set {_m} to a new chest inventory with 3 row named "&6Gen Drop Item Creator"
+			set slot getBorderSlots(3) of {_m} to gray stained glass pane named "&7"
+			set {_setName} to name tag named "&eSet Name" with lore "&aclick to set name.", "&2Current Name: %colored {gens::items::item::%{_ID}%.name}%"
+			set string tag "minecraft:custom_data;clickData;1" of nbt of {_setName} to "set_name"
+			set slot 10 of {_m} to {_setName}
+			set {_setItemType} to item frame named "&eSet Item ItemType" with lore "&eclick to set item ItemType.", "&2Current Itemtype: %{gens::items::item::%{_ID}%.item_type}%"
+			set string tag "minecraft:custom_data;clickData;1" of nbt of {_setItemType} to "set_item_item_type"
+			set slot 12 of {_m} to {_setItemType}
+			set {_setSellPrice} to gold block named "&eSet Sell Price" with lore "&eclick to set item sell price.", "&2Current Sell Price: %{gens::items::item::%{_ID}%.sell_price}%"
+			set string tag "minecraft:custom_data;clickData;1" of nbt of {_setSellPrice} to "set_sell_price"
+			set slot 14 of {_m} to {_setSellPrice}
+			set {_manageLore} to item frame named "&aManage Lore" with lore "&eclick to manage lore."
+			set string tag "minecraft:custom_data;clickData;1" of nbt of {_manageLore} to "manage_lore"
+			set slot 16 of {_m} to {_manageLore}
+			open {_m} to {_P}
+			set slot 26 of {_P}'s current inventory to getGenDropItem("%metadata tag "gens;items;editing_id" of {_P}%", "")
+		else:
+			send "&cYou're not editing a gen?" to {_P}
+	if {_type} = "manage_lore":
+		if metadata tag "gens;items;editing_id" of {_P} is set:
+			set {_ID} to metadata tag "gens;items;editing_id" of {_P}
+			set {_m} to a new chest inventory with 6 row named "&6Gen Drop Item Creator"
+			set slot getBorderSlots(6) of {_m} to gray stained glass pane named "&7"
+			set slot (all integers between 37 and 43) of {_m} to gray stained glass pane named "&7"
+			set {_loreLines::*} to split {gens::items::item::%{_ID}%.lore} by "`"
+			set {_loreSlots::*} to (all integers between 10 and 16) and (all integers between 19 and 25) and (all integers between 28 and 34)
+			set {_lorePages} to ceil((size of {_loreLines::*})/21)
+			{_loreLines::1} != "$no_lore$":
+				if {_lorePage} = 1:
+					loop (size of {_loreLines::*}) times:
+						if {_loreLines::%loop-value%} = "":
+							set {_loreLines::%loop-value%} to "&5&oEmpty"
+						set {_loreLine} to paper named "%{_loreLines::%loop-value%}%" with lore "&6Left-Click to edit", "&6Right-Click to delete", "&eShift+Left-Click to move left", "&eShift+Right-Click to move right"
+						set string tag "minecraft:custom_data;clickData;1" of nbt of {_loreLine} to "lore_line"
+						set string tag "minecraft:custom_data;clickData;2" of nbt of {_loreLine} to "%loop-value%"
+						set string tag "minecraft:custom_data;clickData;3" of nbt of {_loreLine} to "%{_lorePage}%"
+						set slot {_loreSlots::%loop-value%} of {_m} to {_loreLine}
+				else:
+					loop 21 times:
+						if {_loreLines::%loop-value%} = "":
+							set {_loreLines::%loop-value%} to "&7"
+						set {_loreLine} to paper named "%{_loreLines::%loop-value+({_lorePage}*21)%}%" with lore "&6Left-Click to edit", "&6Right-Click to delete", "&eShift+Left-Click to move left", "&eShift+Right-Click to move right"
+						set string tag "minecraft:custom_data;clickData;1" of nbt of {_loreLine} to "lore_line"
+						set string tag "minecraft:custom_data;clickData;2" of nbt of {_loreLine} to "%loop-value+({_lorePage}*21)%"
+						set string tag "minecraft:custom_data;clickData;3" of nbt of {_loreLine} to "%{_lorePage}%"
+						set slot {_loreSlots::%loop-value%} of {_m} to {_loreLine}
+			if {_lorePage} > 1:
+				set {_lastPage} to arrow named "&bLast Page" with lore "&eclick to go to last lore page."
+				set string tag "minecraft:custom_data;clickData;1" of nbt of {_lastPage} to "last_lore_page"
+				set string tag "minecraft:custom_data;clickData;2" of nbt of {_lastPage} to "%{_lorePage}-1%"
+				set slot 37 of {_m} to {_lastPage}
+			if {_lorePage} < {_lorePages}:
+				set {_nextPage} to arrow named "&bNext Page" with lore "&eclick to go to the next lore page."
+				set string tag "minecraft:custom_data;clickData;1" of nbt of {_nextPage} to "next_lore_page"
+				set string tag "minecraft:custom_data;clickData;2" of nbt of {_nextPage} to "%{_lorePage}+1%"
+				set slot 43 of {_m} to {_nextPage}
+			set {_displayPlaceHolders} to chest named "&aPlace Holders" with lore "&2$sell_price$&a, &2$empty$"
+			set slot 39 of {_m} to {_displayPlaceHolders}
+			set {_addLine} to paper named "&aAdd Lore Line" with lore "&eclick to add lore line."
+			set string tag "minecraft:custom_data;clickData;1" of nbt of {_addLine} to "add_lore_line"
+			set string tag "minecraft:custom_data;clickData;2" of nbt of {_addLine} to "%{_lorePage}%"
+			set slot 40 of {_m} to {_addLine}
+			set {_goBack} to arrow named "&bGo Back" with lore "&eclick to go back."
+			set string tag "minecraft:custom_data;clickData;1" of nbt of {_goBack} to "go_back"
+			set string tag "minecraft:custom_data;clickData;2" of nbt of {_goBack} to "edit_item"
+			set slot 45 of {_m} to {_goBack}
+			open {_m} to {_P}
+			set slot 53 of {_P}'s current inventory to getGenDropItem("%metadata tag "gens;items;editing_id" of {_P}%", "")
+		else:
+			close {_P}'s inventory
+			send "&cYou're not editing a gen?" to {_P}
+#comand to make gen drops (items that are dropped by gens)
+command /genDropCreator:
+	permission: op
+	trigger:
+		itemCreatorGUIs(player, "front_page", "")
+#click events for gen drop creator
+on inventory click:
+	name of event-inventory = "&6Gen Drop Item Creator":
+		cancel event
+		player has permission "op":
+			set {_clickedItem} to clicked slot
+			if string tag "minecraft:custom_data;clickData;1" of nbt of {_clickedItem} is set:
+				set {_ID} to metadata tag "gens;items;editing_id" of player
+				if string tag "minecraft:custom_data;clickData;1" of nbt of {_clickedItem} = "go_back":
+					itemCreatorGUIs(player, string tag "minecraft:custom_data;clickData;2" of nbt of {_clickedItem}, "")
+				# Manage Front Page
+				if string tag "minecraft:custom_data;clickData;1" of nbt of {_clickedItem} = "new_item":
+					close player's inventory
+					set metadata tag "chatUsage" of player to "true"
+					set metadata tag "gens;items;selected_new_item_id" of player to "true"
+					send "&2Item IDs:" to player
+					send "  &a%{gens::items::item_ids::*}%" to player
+					send "" to player
+					send "&aType a item ID in chat. &cType 'end' to cancel this." to player
+				if string tag "minecraft:custom_data;clickData;1" of nbt of {_clickedItem} = "edit_item":
+					close player's inventory
+					set metadata tag "chatUsage" of player to "true"
+					set metadata tag "gens;items;selected_item_edit_id" of player to "true"
+					send "&2Item IDs:" to player
+					send "  &a%{gens::items::item_ids::*}%" to player
+					send "" to player
+					send "&aType a item ID to edit in chat. &cType 'end' to cancel this." to player
+				if string tag "minecraft:custom_data;clickData;1" of nbt of {_clickedItem} = "delete_item":
+					close player's inventory
+					set metadata tag "chatUsage" of player to "true"
+					set metadata tag "gens;items;selected_delete_item_id" of player to "true"
+					send "&2Item IDs:" to player
+					send "  &a%{gens::items::item_ids::*}%" to player
+					send "" to player
+					send "&aType a item ID to &cDELETE &ain chat. &cType 'end' to cancel this." to player              
+				# Manage Edit Item
+				if string tag "minecraft:custom_data;clickData;1" of nbt of {_clickedItem} = "set_name":
+					set metadata tag "chatUsage" of player to true
+					set metadata tag "gens;items;selected_new_item_name" of player to true
+					close player's inventory
+					send "&aType a new name in chat and use '&' for color codes. &cType 'end' to cancel this."
+					send "&2Current Name: %colored {gens::items::item::%{_ID}%.name}%"
+				if string tag "minecraft:custom_data;clickData;1" of nbt of {_clickedItem} = "set_item_item_type":
+					set metadata tag "chatUsage" of player to true
+					set metadata tag "gens;items;selected_new_item_type" of player to true
+					close player's inventory
+					send "&aType a new item type in chat. &cType 'end' to cancel this."
+					send "&2Current Item Type: %{gens::items::item::%{_ID}%.item_type}%"
+				if string tag "minecraft:custom_data;clickData;1" of nbt of {_clickedItem} = "set_sell_price":
+					set metadata tag "chatUsage" of player to true
+					set metadata tag "gens;items;selected_new_sell_price" of player to true
+					close player's inventory
+					send "&aType a new number in chat for the sell price. &cType 'end' to cancel this."
+					send "&2Current Item Type: %{gens::items::item::%{_ID}%.sell_price}%"
+				if string tag "minecraft:custom_data;clickData;1" of nbt of {_clickedItem} = "manage_lore":
+					itemCreatorGUIs(player, "manage_lore", "lore_page:1")
+				if string tag "minecraft:custom_data;clickData;1" of nbt of {_clickedItem} = "add_lore_line":
+					set metadata tag "chatUsage" of player to true
+					set metadata tag "gens;items;lore;editing_lore_page" of player to string tag "minecraft:custom_data;clickData;2" of nbt of {_clickedItem}
+					set metadata tag "gens;items;lore;adding_lore_line" of player to true
+					close player's inventory
+					send "&aType a new lore line in chat and use '&' for color codes. &cType 'end' to cancel this."
+				if string tag "minecraft:custom_data;clickData;1" of nbt of {_clickedItem} = "last_lore_page" or "next_lore_page":
+					itemCreatorGUIs(player, "manage_lore", "lore_page:%string tag "minecraft:custom_data;clickData;2" of nbt of {_clickedItem}%")
+				if string tag "minecraft:custom_data;clickData;1" of nbt of {_clickedItem} = "lore_line":
+					set {_loreLineID} to string tag "minecraft:custom_data;clickData;2" of nbt of {_clickedItem} parsed as integer
+					set {_lorePage} to string tag "minecraft:custom_data;clickData;3" of nbt of {_clickedItem} parsed as integer
+					if click type = shift+lmb:
+						set {_lore::*} to split {gens::items::item::%{_ID}%.lore} by "`"
+						if {_loreLineID} > 1:
+							set {_leftLine} to {_lore::%{_loreLineID}-1%}
+							set {_currentLine} to {_lore::%{_loreLineID}%}
+							loop (size of {_lore::*}) times:
+								loop-value != {_loreLineID} or ({_loreLineID}-1):
+									set {_newlore::%loop-value%} to {_lore::%loop-value%}
+								else:
+									loop-value = {_loreLineID}:
+										set {_newlore::%loop-value%} to {_leftLine}
+									loop-value = ({_loreLineID}-1):
+										set {_newlore::%loop-value%} to {_currentLine}
+							set {_lore} to "%{_newlore::*}%"
+							replace all ", " and " and " with "`" in {_lore}
+							set {gens::items::item::%{_ID}%.lore} to {_lore}
+							itemCreatorGUIs(player, "manage_lore", "lore_page:1")
+						else:
+							send "&cYou cannot move this line any further left!"
+					if click type = shift+rmb:
+						set {_lore::*} to split {gens::items::item::%{_ID}%.lore} by "`"
+						if {_loreLineID} != (size of {_lore::*}):
+							set {_rightLine} to {_lore::%{_loreLineID}+1%}
+							set {_currentLine} to {_lore::%{_loreLineID}%}
+							loop (size of {_lore::*}) times:
+								loop-value != {_loreLineID} or ({_loreLineID}+1):
+									set {_newlore::%loop-value%} to {_lore::%loop-value%}
+								else:
+									loop-value = {_loreLineID}:
+										set {_newlore::%loop-value%} to {_rightLine}
+									loop-value = ({_loreLineID}+1):
+										set {_newlore::%loop-value%} to {_currentLine}
+							set {_lore} to "%{_newlore::*}%"
+							replace all ", " and " and " with "`" in {_lore}
+							set {gens::items::item::%{_ID}%.lore} to {_lore}
+							itemCreatorGUIs(player, "manage_lore", "lore_page:1")
+						else:
+							send "&cYou cannot move this line any further right!"
+					if click type = lmb:
+						set metadata tag "chatUsage" of player to true
+						set metadata tag "gens;items;lore;editing_lore_page" of player to {_lorePage}
+						set metadata tag "gens;items;lore;editing_lore_line" of player to "%{_loreLineID}%"
+						close player's inventory
+						send "&2Place Holders:"
+						send "    &2$empty$&a, &2$sell_price$"
+						send "&aType a new lore line in chat and use '&' for color codes. &cType 'end' to cancel this."
+						set {_lore::*} to split {gens::items::item::%{_ID}%.lore} by "`"
+						send "&2Current Text: &a%{_lore::%{_loreLineID}%}%"
+					if click type = rmb:
+						set {_lore::*} to split {gens::items::item::%{_ID}%.lore} by "`"
+						set metadata tag "chatUsage" of player to true
+						set metadata tag "gens;items;lore;editing_lore_page" of player to {_lorePage}
+						set metadata tag "gens;items;lore;confirm_delete_lore_line" of player to "%{_loreLineID}%"
+						close player's inventory
+						send "&aType anything in chat to confirm deletion of lore line: %{_lore::%{_loreLineID}%}%. &cType 'end' to cancel this."
+#function that gives you a drop of a gen (maybe use for autocollectors later)
+function getGenDropItem(ID: string, extraData: string) :: item:
+	set {_split::*} to split {_extraData} by ","
+	loop {_split::*}:
+		if loop-value contains "owner:":
+			set {_owner} to loop-value
+			replace all "owner:" with "" in {_owner}
+	{gens::items::item_ids::*} contains {_ID}:
+		set {_item_type} to "%{gens::items::item::%{_ID}%.item_type}%" parsed as itemtype
+		set {_item} to {_item_type} named colored {gens::items::item::%{_ID}%.name}
+		set {_lore::*} to split {gens::items::item::%{_ID}%.lore} by "`"
+		{_lore::1} != "$no_lore$":
+			loop (size of {_lore::*}) times: #PLACEHOLDERS: $sell_price$
+				replace all "$sell_price$" with "%{gens::items::item::%{_ID}%.sell_price}%" in {_lore::%loop-value%}
+				replace all "$empty$" with "" in {_lore::%loop-value%}
+			set lore of {_item} to colored {_lore::*}
+		set string tag "minecraft:custom_data;gens;item_data;type" of nbt of {_item} to "drop"
+		set string tag "minecraft:custom_data;gens;item_data;id" of nbt of {_item} to "%{_ID}%"
+		set string tag "minecraft:custom_data;gens;techincal_flags;owner" of nbt of {_item} to "%{_owner}%"
+		return {_item}
+	else:
+		return air
+#tab compleations for /getGenDrop
+on tab complete of "/getGenDrop":
+	if player has permission "op":
+		{gens::items::item_ids::*} is set:
+			set tab completions for position 1 to {gens::items::item_ids::*}
+		set tab completions for position 2 to "amount"
+#command for getting the drop of a gen
+command /getGenDrop <text> [<int>] [<player>]:
+	permission: op
+	trigger:
+		set {_amount} to 1
+		arg-2 is set:
+			set {_amount} to arg-2
+		if arg-3 is set:
+			set {_player} to arg-3
+		else:
+			set {_player} to player
+		{gens::items::item_ids::*} contains arg-1:
+			give {_player} {_amount} of getGenDropItem(arg-1, "")
+		else:
+			send "&cInvalid Gen ID"
+#function to generate the GUI of a gen creator
+function genCreatorGUIs(P: player, type: string, extraData: string):
+	set {_split::*} to split {_extraData} by ","
+	loop {_split::*}:
+		if loop-value contains "lore_page:":
+			set {_lorePage} to loop-value
+			replace all "lore_page:" with "" in {_lorePage}
+			set {_lorePage} to "%{_lorePage}%" parsed as integer
+	if {_lorePage} is not set:
+		set {_lorePage} to 1
+	if {_type} = "front_page":
+		set {_m} to a new chest inventory with 3 row named "&6Gen Creator"
+		set slot getBorderSlots(3) of {_m} to gray stained glass pane named "&7"
+		set {_new} to cobblestone named "&2New Gen" with lore "&aclick to create a new gen."
+		set string tag "minecraft:custom_data;clickData;1" of nbt of {_new} to "new_gen"
+		set slot 11 of {_m} to {_new}
+		set {_edit} to item frame named "&6Edit Gen" with lore "&eclick to edit a gen."
+		set string tag "minecraft:custom_data;clickData;1" of nbt of {_edit} to "edit_gen"
+		set slot 13 of {_m} to {_edit}
+		set {_delete} to barrier named "&4Delete Gen" with lore "&cclick to delete a gen."
+		set string tag "minecraft:custom_data;clickData;1" of nbt of {_delete} to "delete_gen"
+		set slot 15 of {_m} to {_delete}
+		open {_m} to {_P}
+	if {_type} = "edit_gen":
+		if metadata tag "gens;editing_id" of {_P} is set:
+			set {_ID} to metadata tag "gens;editing_id" of {_P}
+			set {_m} to a new chest inventory with 3 row named "&6Gen Creator"
+			set slot getBorderSlots(3) of {_m} to gray stained glass pane named "&7"
+			set {_setName} to name tag named "&eSet Name" with lore "&aclick to set name.", "&2Current Name: %colored {gens::gen::%{_ID}%.name}%"
+			set string tag "minecraft:custom_data;clickData;1" of nbt of {_setName} to "set_name"
+			set slot 10 of {_m} to {_setName}
+			set {_dropAmount} to chest named "&eSet Drop Amount" with lore "&eclick to set drop amount.", "&2Drop Amount: %{gens::gen::%{_ID}%.drop_amount}%"
+			set string tag "minecraft:custom_data;clickData;1" of nbt of {_dropAmount} to "set_drop_amount"
+			set slot 11 of {_m} to {_dropAmount}
+			set {_dropTime} to clock named "&eSet Drop Time" with lore "&eclick to set drop time.", "&6No less than 0.1 seconds.", "&2Current Drop Time: %{gens::gen::%{_ID}%.drop_time}%s"
+			set string tag "minecraft:custom_data;clickData;1" of nbt of {_dropTime} to "set_drop_time"
+			set slot 12 of {_m} to {_dropTime}
+			set {_setDropItem} to hopper named "&eSet Drop Item" with lore "&eclick to set drop item.", "&2Current Drop Item ID: &2%{gens::gen::%{_ID}%.drop_item_id}%"
+			set string tag "minecraft:custom_data;clickData;1" of nbt of {_setDropItem} to "set_drop_item"
+			set slot 13 of {_m} to {_setDropItem}
+			set {_manageUpgrades} to green concrete named "&aManage Upgrades" with lore "&eclick to manage upgrades."
+			set string tag "minecraft:custom_data;clickData;1" of nbt of {_manageUpgrades} to "manage_upgrades"
+			set slot 14 of {_m} to {_manageUpgrades}
+			set {_setGenItemType} to item frame named "&eSet Gen Item Type" with lore "&eclick to set gen item type.", "&2Current Itemtype: %{gens::gen::%{_ID}%.item_type}%"
+			set string tag "minecraft:custom_data;clickData;1" of nbt of {_setGenItemType} to "set_gen_item_type"
+			set slot 15 of {_m} to {_setGenItemType}
+			set {_manageLore} to item frame named "&aManage Lore" with lore "&eclick to manage lore."
+			set string tag "minecraft:custom_data;clickData;1" of nbt of {_manageLore} to "manage_lore"
+			set slot 16 of {_m} to {_manageLore}
+			open {_m} to {_P}
+			set slot 26 of {_P}'s current inventory to getGenItem(metadata tag "gens;editing_id" of {_P})
+		else:
+			send "&cYou're not editing a gen?" to {_P}
+	if {_type} = "manage_upgrades":
+		if metadata tag "gens;editing_id" of {_P} is set:
+			set {_ID} to metadata tag "gens;editing_id" of {_P}
+			set {_m} to a new chest inventory with 5 row named "&6Gen Creator"
+			set slot getBorderSlots(5) of {_m} to gray stained glass pane named "&7"
+			set {_setNoUpgrade} to barrier named "&cRemove Upgrade." with lore "&aclick to no upgrade."
+			set string tag "minecraft:custom_data;clickData;1" of nbt of {_setNoUpgrade} to "set_no_upgrade"
+			set slot 20 of {_m} to {_setNoUpgrade}
+			set {_setUpgradeID} to cobblestone named "&aSet Upgrade ID" with lore "&eclick to set upgrade ID.", "&2Current Upgrade to ID: %{gens::gen::%{_ID}%.upgrade_into_id}%"
+			set string tag "minecraft:custom_data;clickData;1" of nbt of {_setUpgradeID} to "set_upgrade_id"
+			set slot 22 of {_m} to {_setUpgradeID}
+			set {_setUpgradePrice} to gold block named "&aSet Upgraded Price" with lore "&eclick to set upgrade price (Must be equal to or greater than 1).", "&2Current Upgrade Price: %{gens::gen::%{_ID}%.upgrade_price}%"
+			set string tag "minecraft:custom_data;clickData;1" of nbt of {_setUpgradePrice} to "set_upgrade_price"
+			set slot 24 of {_m} to {_setUpgradePrice}
+			set {_goBack} to arrow named "&bGo Back" with lore "&eclick to go back."
+			set string tag "minecraft:custom_data;clickData;1" of nbt of {_goBack} to "go_back"
+			set string tag "minecraft:custom_data;clickData;2" of nbt of {_goBack} to "edit_gen"
+			set slot 36 of {_m} to {_goBack}
+			open {_m} to {_P}
+			set slot 44 of {_P}'s current inventory to getGenItem(metadata tag "gens;editing_id" of {_P})
+		else:
+			close {_P}'s inventory
+			send "&cYou're not editing a gen?" to {_P}
+	if {_type} = "manage_lore":
+		if metadata tag "gens;editing_id" of {_P} is set:
+			set {_ID} to metadata tag "gens;editing_id" of {_P}
+			set {_m} to a new chest inventory with 6 row named "&6Gen Creator"
+			set slot getBorderSlots(6) of {_m} to gray stained glass pane named "&7"
+			set slot (all integers between 37 and 43) of {_m} to gray stained glass pane named "&7"
+			set {_loreLines::*} to split {gens::gen::%{_ID}%.lore} by "`"
+			set {_loreSlots::*} to (all integers between 10 and 16) and (all integers between 19 and 25) and (all integers between 28 and 34)
+			set {_lorePages} to ceil((size of {_loreLines::*})/21)
+ 
+			{_loreLines::1} != "$no_lore$":
+				if {_lorePage} = 1:
+					loop (size of {_loreLines::*}) times:
+						if {_loreLines::%loop-value%} = "":
+							set {_loreLines::%loop-value%} to "&5&oEmpty"
+						set {_loreLine} to paper named "%{_loreLines::%loop-value%}%" with lore "&6Left-Click to edit", "&6Right-Click to delete", "&eShift+Left-Click to move left", "&eShift+Right-Click to move right"
+						set string tag "minecraft:custom_data;clickData;1" of nbt of {_loreLine} to "lore_line"
+						set string tag "minecraft:custom_data;clickData;2" of nbt of {_loreLine} to "%loop-value%"
+						set string tag "minecraft:custom_data;clickData;3" of nbt of {_loreLine} to "%{_lorePage}%"
+						set slot {_loreSlots::%loop-value%} of {_m} to {_loreLine}
+				else:
+					loop 21 times:
+						if {_loreLines::%loop-value%} = "":
+							set {_loreLines::%loop-value%} to "&7"
+						set {_loreLine} to paper named "%{_loreLines::%loop-value+({_lorePage}*21)%}%" with lore "&6Left-Click to edit", "&6Right-Click to delete", "&eShift+Left-Click to move left", "&eShift+Right-Click to move right"
+						set string tag "minecraft:custom_data;clickData;1" of nbt of {_loreLine} to "lore_line"
+						set string tag "minecraft:custom_data;clickData;2" of nbt of {_loreLine} to "%loop-value+({_lorePage}*21)%"
+						set string tag "minecraft:custom_data;clickData;3" of nbt of {_loreLine} to "%{_lorePage}%"
+						set slot {_loreSlots::%loop-value%} of {_m} to {_loreLine}
+			
+			if {_lorePage} > 1:
+				set {_lastPage} to arrow named "&bLast Page" with lore "&eclick to go to last lore page."
+				set string tag "minecraft:custom_data;clickData;1" of nbt of {_lastPage} to "last_lore_page"
+				set string tag "minecraft:custom_data;clickData;2" of nbt of {_lastPage} to "%{_lorePage}-1%"
+				set slot 37 of {_m} to {_lastPage}
+			
+			if {_lorePage} < {_lorePages}:
+				set {_nextPage} to arrow named "&bNext Page" with lore "&eclick to go to the next lore page."
+				set string tag "minecraft:custom_data;clickData;1" of nbt of {_nextPage} to "next_lore_page"
+				set string tag "minecraft:custom_data;clickData;2" of nbt of {_nextPage} to "%{_lorePage}+1%"
+				set slot 43 of {_m} to {_nextPage}
+			
+			set {_displayPlaceHolders} to chest named "&aPlace Holders" with lore "&2$empty$&a, &2$drop_item_id$&a, &2$drop_item_name$&a, &2$drop_time$&a, &2$drop_amount$", "&2$upgrade_into_id$&a, &2$upgrade_into_gen_name$&a, &2$upgrade_price$"
+			set slot 39 of {_m} to {_displayPlaceHolders}
+ 
+			set {_addLine} to paper named "&aAdd Lore Line" with lore "&eclick to add lore line."
+			set string tag "minecraft:custom_data;clickData;1" of nbt of {_addLine} to "add_lore_line"
+			set string tag "minecraft:custom_data;clickData;2" of nbt of {_addLine} to "%{_lorePage}%"
+			set slot 40 of {_m} to {_addLine}
+ 
+			set {_goBack} to arrow named "&bGo Back" with lore "&eclick to go back."
+			set string tag "minecraft:custom_data;clickData;1" of nbt of {_goBack} to "go_back"
+			set string tag "minecraft:custom_data;clickData;2" of nbt of {_goBack} to "edit_gen"
+			set slot 45 of {_m} to {_goBack}
+			open {_m} to {_P}
+			set slot 53 of {_P}'s current inventory to getGenItem(metadata tag "gens;editing_id" of {_P})
+		else:
+			close {_P}'s inventory
+			send "&cYou're not editing a gen?" to {_P}
+#command to to create generators
+command /genCreator:
+	permission: op
+	trigger:
+		genCreatorGUIs(player, "front_page", "")
+#click events for /genCreator
+on inventory click:
+	name of event-inventory = "&6Gen Creator":
+		cancel event
+		player has permission "op":
+			set {_clickedItem} to clicked slot
+			if string tag "minecraft:custom_data;clickData;1" of nbt of {_clickedItem} is set:
+				set {_ID} to metadata tag "gens;editing_id" of player
+				if string tag "minecraft:custom_data;clickData;1" of nbt of {_clickedItem} = "go_back":
+					genCreatorGUIs(player, string tag "minecraft:custom_data;clickData;2" of nbt of {_clickedItem}, "")
+				# Manage Front Page
+				if string tag "minecraft:custom_data;clickData;1" of nbt of {_clickedItem} = "new_gen":
+					close player's inventory
+					set metadata tag "chatUsage" of player to "true"
+					set metadata tag "gens;selected_new_gen_id" of player to "true"
+					send "&2Gen IDs:" to player
+					send "  &a%{gens::gen_ids::*}%" to player
+					send "" to player
+					send "&aType a gen ID in chat. &cType 'end' to cancel this." to player
+				if string tag "minecraft:custom_data;clickData;1" of nbt of {_clickedItem} = "edit_gen":
+					close player's inventory
+					set metadata tag "chatUsage" of player to "true"
+					set metadata tag "gens;selected_gen_edit_id" of player to "true"
+					send "&2Gen IDs:" to player
+					send "  &a%{gens::gen_ids::*}%" to player
+					send "" to player
+					send "&aType a gen ID to edit in chat. &cType 'end' to cancel this." to player
+				if string tag "minecraft:custom_data;clickData;1" of nbt of {_clickedItem} = "delete_gen":
+					close player's inventory
+					set metadata tag "chatUsage" of player to "true"
+					set metadata tag "gens;selected_delete_gen_id" of player to "true"
+					send "&2Gen IDs:" to player
+					send "  &a%{gens::gen_ids::*}%" to player
+					send "" to player
+					send "&aType a gen ID to &cDELETE &ain chat. &cType 'end' to cancel this." to player
+				# Manage Manage Gen Editor
+				if string tag "minecraft:custom_data;clickData;1" of nbt of {_clickedItem} = "set_name":
+					set metadata tag "chatUsage" of player to true
+					set metadata tag "gens;selected_new_gen_name" of player to true
+					close player's inventory
+					send "&aType a new name in chat and use '&' for color codes. &cType 'end' to cancel this."
+					send "&2Current Name: %colored {gens::gen::%{_ID}%.name}%"
+				if string tag "minecraft:custom_data;clickData;1" of nbt of {_clickedItem} = "set_drop_amount":
+					set metadata tag "chatUsage" of player to true
+					set metadata tag "gens;selected_new_gen_drop_amount" of player to true
+					close player's inventory
+					send "&aType a new integer in chat for the new drop amount (1+). &cType 'end' to cancel this."
+					send "&2Current Drop Amount: %{gens::gen::%{_ID}%.drop_amount}%"
+				if string tag "minecraft:custom_data;clickData;1" of nbt of {_clickedItem} = "set_drop_time":
+					set metadata tag "chatUsage" of player to true
+					set metadata tag "gens;selected_new_gen_drop_time" of player to true
+					close player's inventory
+					send "&aType a new integer in chat for the new drop time (above 0.1s). &cType 'end' to cancel this."
+					send "&2Current Drop Time: %{gens::gen::%{_ID}%.drop_time}%"
+				if string tag "minecraft:custom_data;clickData;1" of nbt of {_clickedItem} = "set_drop_item":
+					close player's inventory
+					set metadata tag "chatUsage" of player to "true"
+					set metadata tag "gens;selected_gen_drop_item_id" of player to "true"
+					send "&2Gen Drop Item IDs:" to player
+					send "  &a%{gens::items::item_ids::*}%" to player
+					send "" to player
+					send "&aType a gen ID to upgrade to in chat. &cType 'end' to cancel this." to player
+				if string tag "minecraft:custom_data;clickData;1" of nbt of {_clickedItem} = "manage_upgrades":
+					genCreatorGUIs(player, "manage_upgrades", "")
+				if string tag "minecraft:custom_data;clickData;1" of nbt of {_clickedItem} = "set_no_upgrade":
+					set {_ID} to metadata tag "gens;editing_id" of player
+					set {gens::gen::%{_ID}%.upgrade_into_id} to "$none$"
+					set {gens::gen::%{_ID}%.upgrade_price} to "0"
+					send "&cSuccessfully set no upgrade."
+					genCreatorGUIs(player, "manage_upgrades", "")
+				if string tag "minecraft:custom_data;clickData;1" of nbt of {_clickedItem} = "set_upgrade_id":
+					close player's inventory
+					set metadata tag "chatUsage" of player to "true"
+					set metadata tag "gens;selected_gen_upgrade_to_id" of player to "true"
+					send "&2Gen IDs:" to player
+					send "  &a%{gens::gen_ids::*}%" to player
+					send "" to player
+					send "&aType a gen ID to upgrade to in chat. &cType 'end' to cancel this." to player
+				if string tag "minecraft:custom_data;clickData;1" of nbt of {_clickedItem} = "set_upgrade_price":
+					set metadata tag "chatUsage" of player to true
+					set metadata tag "gens;selected_gen_upgrade_price" of player to true
+					close player's inventory
+					send "&aType a number in chat for the new upgrade price (euqal to or above 1). &cType 'end' to cancel this."
+					send "&2Current Upgrade Price: %{gens::gen::%{_ID}%.upgrade_price}%"
+				if string tag "minecraft:custom_data;clickData;1" of nbt of {_clickedItem} = "manage_lore":
+					genCreatorGUIs(player, "manage_lore", "lore_page:1")
+				if string tag "minecraft:custom_data;clickData;1" of nbt of {_clickedItem} = "add_lore_line":
+					set metadata tag "chatUsage" of player to true
+					set metadata tag "gens;lore;editing_lore_page" of player to string tag "minecraft:custom_data;clickData;2" of nbt of {_clickedItem}
+					set metadata tag "gens;lore;adding_lore_line" of player to true
+					close player's inventory
+					send "&2Place Holders:"
+					send "    &2$empty$&a, &2$drop_item_id$&a, &2$drop_item_name$&a, &2$drop_time$&a, &2$drop_amount$"
+					send "&2$upgrade_into_id$&a, &2$upgrade_into_gen_name$&a, &2$upgrade_price$"
+					send "&aType a new lore line in chat and use '&' for color codes. &cType 'end' to cancel this."
+				if string tag "minecraft:custom_data;clickData;1" of nbt of {_clickedItem} = "last_lore_page" or "next_lore_page":
+					genCreatorGUIs(player, "manage_lore", "lore_page:%string tag "minecraft:custom_data;clickData;2" of nbt of {_clickedItem}%")
+				if string tag "minecraft:custom_data;clickData;1" of nbt of {_clickedItem} = "lore_line":
+					set {_loreLineID} to string tag "minecraft:custom_data;clickData;2" of nbt of {_clickedItem} parsed as integer
+					set {_lorePage} to string tag "minecraft:custom_data;clickData;3" of nbt of {_clickedItem} parsed as integer
+					if click type = shift+lmb:
+						set {_lore::*} to split {gens::gen::%{_ID}%.lore} by "`"
+						if {_loreLineID} > 1:
+							set {_leftLine} to {_lore::%{_loreLineID}-1%}
+							set {_currentLine} to {_lore::%{_loreLineID}%}
+							loop (size of {_lore::*}) times:
+								loop-value != {_loreLineID} or ({_loreLineID}-1):
+									set {_newlore::%loop-value%} to {_lore::%loop-value%}
+								else:
+									loop-value = {_loreLineID}:
+										set {_newlore::%loop-value%} to {_leftLine}
+									loop-value = ({_loreLineID}-1):
+										set {_newlore::%loop-value%} to {_currentLine}
+							set {_lore} to "%{_newlore::*}%"
+							replace all ", " and " and " with "`" in {_lore}
+							set {gens::gen::%{_ID}%.lore} to {_lore}
+							genCreatorGUIs(player, "manage_lore", "lore_page:1")
+						else:
+							send "&cYou cannot move this line any further left!"
+					if click type = shift+rmb:
+						set {_lore::*} to split {gens::gen::%{_ID}%.lore} by "`"
+						if {_loreLineID} != (size of {_lore::*}):
+							set {_rightLine} to {_lore::%{_loreLineID}+1%}
+							set {_currentLine} to {_lore::%{_loreLineID}%}
+							loop (size of {_lore::*}) times:
+								loop-value != {_loreLineID} or ({_loreLineID}+1):
+									set {_newlore::%loop-value%} to {_lore::%loop-value%}
+								else:
+									loop-value = {_loreLineID}:
+										set {_newlore::%loop-value%} to {_rightLine}
+									loop-value = ({_loreLineID}+1):
+										set {_newlore::%loop-value%} to {_currentLine}
+							set {_lore} to "%{_newlore::*}%"
+							replace all ", " and " and " with "`" in {_lore}
+							set {gens::gen::%{_ID}%.lore} to {_lore}
+							genCreatorGUIs(player, "manage_lore", "lore_page:1")
+						else:
+							send "&cYou cannot move this line any further right!"
+					if click type = lmb:
+						set metadata tag "chatUsage" of player to true
+						set metadata tag "gens;lore;editing_lore_page" of player to {_lorePage}
+						set metadata tag "gens;lore;editing_lore_line" of player to "%{_loreLineID}%"
+						close player's inventory
+						send "&2Place Holders:"
+						send "    &2$empty$&a, &2$drop_item_id$&a, &2$drop_item_name$&a, &2$drop_time$&a, &2$drop_amount$"
+						send "&2$upgrade_into_id$&a, &2$upgrade_into_gen_name$&a, &2$upgrade_price$"
+						send "&aType a new lore line in chat and use '&' for color codes. &cType 'end' to cancel this."
+						set {_lore::*} to split {gens::gen::%{_ID}%.lore} by "`"
+						send "&2Current Text: &a%{_lore::%{_loreLineID}%}%"
+					if click type = rmb:
+						set {_lore::*} to split {gens::gen::%{_ID}%.lore} by "`"
+						set metadata tag "chatUsage" of player to true
+						set metadata tag "gens;lore;editing_lore_page" of player to {_lorePage}
+						set metadata tag "gens;lore;confirm_delete_lore_line" of player to "%{_loreLineID}%"
+						close player's inventory
+						send "&2Type anything in chat to confirm deletion of lore line: &a%{_lore::%{_loreLineID}%}%. &cType 'end' to cancel this."
+				if string tag "minecraft:custom_data;clickData;1" of nbt of {_clickedItem} = "set_gen_item_type":
+					set metadata tag "chatUsage" of player to true
+					set metadata tag "gens;selected_new_gen_block_type" of player to true
+					close player's inventory
+					send "&aType a new block type in chat. &cType 'end' to cancel this."
+					send "&2Current Block Type: %{gens::gen::%{_ID}%.item_type}%"
+		else:
+			close player's inventory
+			send "&cHow?!"
+#!!! GIVES PLAYERS GENS IN THE RIGHT WAY USE IN SHOP MAYBE
+function getGenItem(ID: string) :: item:
+	{gens::gen_ids::*} contains {_ID}:
+		set {_item_type} to "%{gens::gen::%{_ID}%.item_type}%" parsed as itemtype
+		set {_item} to {_item_type} named colored {gens::gen::%{_ID}%.name}
+		set {_lore::*} to split {gens::gen::%{_ID}%.lore} by "`"
+		set {_dropItemID} to {gens::gen::%{_ID}%.drop_item_id}
+		{_lore::1} != "$no_lore$":
+			loop (size of {_lore::*}) times:
+				replace all "$empty$" with "" in {_lore::%loop-value%}
+				replace all "$drop_item_id$" with "%{_dropItemID}%" in {_lore::%loop-value%}
+				replace all "$drop_item_name$" with "%{gens::items::item::%{_dropItemID}%.name}%" in {_lore::%loop-value%}
+				replace all "$drop_time$" with "%{gens::gen::%{_ID}%.drop_time}%" in {_lore::%loop-value%}
+				replace all "$drop_amount$" with "%{gens::gen::%{_ID}%.drop_amount}%" in {_lore::%loop-value%}
+				replace all "$upgrade_into_id$" with "%{gens::gen::%{_ID}%.upgrade_into_id}%" in {_lore::%loop-value%}
+				if {gens::gen::%{gens::gen::%{_ID}%.upgrade_into_id}%.name} is set:
+					set {_upgadeIntoName} to {gens::gen::%{gens::gen::%{_ID}%.upgrade_into_id}%.name}
+				else:
+					set {_upgadeIntoName} to "&c<no set>"
+				replace all "$upgrade_into_gen_name$" with "%{_upgadeIntoName}%" in {_lore::%loop-value%}
+				replace all "$upgrade_price$" with "%{gens::gen::%{_ID}%.upgrade_price}%" in {_lore::%loop-value%}
+			set lore of {_item} to colored {_lore::*}
+		set string tag "minecraft:custom_data;gens;item_data;type" of nbt of {_item} to "gen"
+		set string tag "minecraft:custom_data;gens;item_data;id" of nbt of {_item} to "%{_ID}%"
+		return {_item}
+	else:
+		return air
+#tab comps of /getGen ?
+on tab complete of "/getGen":
+	if player has permission "op":
+		{gens::gen_ids::*} is set:
+			set tab completions for position 1 to {gens::gen_ids::*}
+		set tab completions for position 2 to "amount"
+#TEST!!! command /getgen gives you gen, i have a similar command (leave this remove the other this is better )
+command /getGen <text> [<int>] [<player>]:
+	permission: op
+	trigger:
+		set {_amount} to 1
+		arg-2 is set:
+			set {_amount} to arg-2
+		if arg-3 is set:
+			set {_player} to arg-3
+		else:
+			set {_player} to player
+		{gens::gen_ids::*} contains arg-1:
+			give {_player} {_amount} of getGenItem(arg-1)
+		else:
+			send "&cInvalid Gen ID"
+#some chat events for gencreator?
+on chat:
+	if metadata tag "chatUsage" of player is set:
+		cancel event
+		set {_message} to uncolored message
+		set {_chatUsage} to true
+		if {_chatUsage} is set: # Gen Edit/Creator
+			# Handle Front Page
+			if metadata tag "gens;selected_new_gen_id" of player is set:
+				if {_message} = "end":
+					delete metadata tag "chatUsage" of player
+					delete metadata tag "gens;selected_new_gen_id" of player
+					send "&cStopped."
+					stop
+				replace all " " with "_" in {_message}
+				set {_message} to lowercase {_message}
+				{gens::gen_ids::*} does not contain {_message}:
+					add {_message} to {gens::gen_ids::*}
+					set {gens::gen::%{_message}%.item_type} to cobblestone
+					set {gens::gen::%{_message}%.name} to "&7Cobblestone Gen"
+					set {gens::gen::%{_message}%.lore} to "$no_lore$"
+					set {gens::gen::%{_message}%.drop_item_id} to "cobblestone"
+					set {gens::gen::%{_message}%.drop_amount} to 1
+					set {gens::gen::%{_message}%.drop_time} to 30
+					set {gens::gen::%{_message}%.upgrade_into_id} to "$none$"
+					set {gens::gen::%{_message}%.upgrade_price} to "0"
+					send "&aGen Succesfully Created With ID %{_message}%."
+					set metadata tag "gens;editing_id" of player to "%{_message}%"
+					genCreatorGUIs(player, "edit_gen", "")
+					delete metadata tag "chatUsage" of player
+					delete metadata tag "gens;selected_new_gen_id" of player
+				else:
+					send "&cThis gen ID already exists!"
+				stop
+			if metadata tag "gens;selected_gen_edit_id" of player is set:
+				if {_message} = "end":
+					delete metadata tag "chatUsage" of player
+					delete metadata tag "gens;selected_gen_edit_id" of player
+					send "&cStopped."
+					stop
+				replace all " " with "_" in {_message}
+				set {_message} to lowercase {_message}
+				{gens::gen_ids::*} contains {_message}:
+					send "&aGen Succesfully Selected With ID %{_message}%."
+					set metadata tag "gens;editing_id" of player to "%{_message}%"
+					genCreatorGUIs(player, "edit_gen", "")
+					delete metadata tag "chatUsage" of player
+					delete metadata tag "gens;selected_gen_edit_id" of player
+				else:
+					send "&cThis gen ID doesn't exist!"
+				stop
+			if metadata tag "gens;selected_delete_gen_id" of player is set:
+				if {_message} = "end":
+					delete metadata tag "chatUsage" of player
+					delete metadata tag "gens;selected_delete_gen_id" of player
+					send "&cStopped."
+					stop
+				replace all " " with "_" in {_message}
+				{gens::gen_ids::*} contains {_message}:
+					remove {_message} from {gens::gen_ids::*}
+					delete {gens::gen::%{_message}%.item_type}
+					delete {gens::gen::%{_message}%.name}
+					delete {gens::gen::%{_message}%.lore}
+					delete {gens::gen::%{_message}%.drop_item_id}
+					delete {gens::gen::%{_message}%.drop_amount}
+					delete {gens::gen::%{_message}%.drop_time}
+					delete {gens::gen::%{_message}%.upgrade_into_id}
+					delete {gens::gen::%{_message}%.upgrade_price}
+					send "&aGen With ID %{_message}% Succesfully Deleted."
+					delete metadata tag "chatUsage" of player
+					delete metadata tag "gens;selected_delete_gen_id" of player
+				else:
+					send "&cGen ID %{_message}% doesn't exist!"
+				stop
+ 
+			# Handle Gen Editor
+			if metadata tag "gens;selected_new_gen_name" of player is set:
+				if {_message} = "end":
+					delete metadata tag "chatUsage" of player
+					delete metadata tag "gens;selected_new_gen_name" of player
+					genCreatorGUIs(player, "edit_gen", "")
+					send "&cStopped."
+					stop
+				else:
+					set {_ID} to metadata tag "gens;editing_id" of player
+					set {gens::gen::%{_ID}%.name} to message
+					send "&aSuccesfully set name too %colored message%&a."
+					genCreatorGUIs(player, "edit_gen", "")
+					delete metadata tag "chatUsage" of player
+					delete metadata tag "gens;selected_new_gen_name" of player
+				stop
+			if metadata tag "gens;selected_new_gen_drop_amount" of player is set:
+				if {_message} = "end":
+					delete metadata tag "chatUsage" of player
+					delete metadata tag "gens;selected_new_gen_drop_amount" of player
+					genCreatorGUIs(player, "edit_gen", "")
+					send "&cStopped."
+					stop
+				else:
+					set {_amount} to message parsed as integer
+					if {_amount} is set:
+						if {_amount} >= 1:
+							set {_ID} to metadata tag "gens;editing_id" of player
+							set {gens::gen::%{_ID}%.drop_amount} to {_amount}
+							send "&aSuccesfully set name too %message%&a."
+							genCreatorGUIs(player, "edit_gen", "")
+							delete metadata tag "chatUsage" of player
+							delete metadata tag "gens;selected_new_gen_drop_amount" of player
+						else:
+							send "&cInteger must be greater than or equal too(>=) 1."
+					else:
+						send "&cNot an integer an integer must be a full number ex 1, 2, 3 not 1.3 1.1"
+				stop
+			if metadata tag "gens;selected_new_gen_drop_time" of player is set:
+				if {_message} = "end":
+					delete metadata tag "chatUsage" of player
+					delete metadata tag "gens;selected_new_gen_drop_time" of player
+					genCreatorGUIs(player, "edit_gen", "")
+					send "&cStopped."
+					stop
+				else:
+					set {_amount} to message parsed as number
+					if {_amount} is set:
+						if {_amount} >= 0.1:
+							set {_ID} to metadata tag "gens;editing_id" of player
+							set {gens::gen::%{_ID}%.drop_time} to {_amount}
+							send "&aSuccesfully set name too %message%&a."
+							genCreatorGUIs(player, "edit_gen", "")
+							delete metadata tag "chatUsage" of player
+							delete metadata tag "gens;selected_new_gen_drop_time" of player
+						else:
+							send "&cNumber must be greater than or equal too(>=) 0.1."
+					else:
+						send "&cNot an number. Must be 0.1+"
+				stop
+			if metadata tag "gens;selected_gen_drop_item_id" of player is set:
+				if {_message} = "end":
+					delete metadata tag "chatUsage" of player
+					delete metadata tag "gens;selected_gen_drop_item_id" of player
+					genCreatorGUIs(player, "edit_gen", "")
+					send "&cStopped."
+					stop
+				replace all " " with "_" in {_message}
+				set {_message} to lowercase {_message}
+				{gens::items::item_ids::*} contains {_message}:
+					send "&aGen Drop Item Succesfully Selected As ID %{_message}%."
+					set {_ID} to metadata tag "gens;editing_id" of player
+					set {gens::gen::%{_ID}%.drop_item_id} to message
+					genCreatorGUIs(player, "edit_gen", "")
+					delete metadata tag "chatUsage" of player
+					delete metadata tag "gens;selected_gen_drop_item_id" of player
+				else:
+					send "&cThis gen drop item ID doesn't exist!"
+				stop
+			if metadata tag "gens;selected_gen_upgrade_to_id" of player is set:
+				if {_message} = "end":
+					delete metadata tag "chatUsage" of player
+					delete metadata tag "gens;selected_gen_upgrade_to_id" of player
+					genCreatorGUIs(player, "edit_gen", "")
+					send "&cStopped."
+					stop
+				replace all " " with "_" in {_message}
+				set {_message} to lowercase {_message}
+				{gens::gen_ids::*} contains {_message}:
+					set {_ID} to metadata tag "gens;editing_id" of player
+					{_message} != {_ID}:
+						send "&aGen Upgrade To Succesfully Selected As ID %{_message}%."
+						set {gens::gen::%{_ID}%.upgrade_into_id} to message
+						genCreatorGUIs(player, "edit_gen", "")
+						delete metadata tag "chatUsage" of player
+						delete metadata tag "gens;selected_gen_upgrade_to_id" of player
+					else:
+						send "&cGen cannot upgrade into itself!"
+				else:
+					send "&cThis gen ID doesn't exist!"
+				stop
+			if metadata tag "gens;selected_gen_upgrade_price" of player is set:
+				if {_message} = "end":
+					delete metadata tag "chatUsage" of player
+					delete metadata tag "gens;selected_gen_upgrade_price" of player
+					genCreatorGUIs(player, "edit_gen", "")
+					send "&cStopped."
+					stop
+				else:
+					set {_amount} to message parsed as number
+					if {_amount} is set:
+						if {_amount} >= 1:
+							set {_ID} to metadata tag "gens;editing_id" of player
+							set {gens::gen::%{_ID}%.upgrade_price} to {_amount}
+							send "&aSuccesfully set name too %message%&a."
+							genCreatorGUIs(player, "edit_gen", "")
+							delete metadata tag "chatUsage" of player
+							delete metadata tag "gens;selected_gen_upgrade_price" of player
+						else:
+							send "&cNumber must be greater than or equal too(>=) 1."
+					else:
+						send "&cNot an number. Must be 1+"
+				stop
+			if metadata tag "gens;lore;adding_lore_line" of player is set:
+				set {_lorePage} to metadata tag "gens;lore;editing_lore_page" of player
+				if {_message} = "end":
+					delete metadata tag "chatUsage" of player
+					delete metadata tag "gens;lore;adding_lore_line" of player
+					delete metadata tag "gens;lore;editing_lore_page" of player
+					genCreatorGUIs(player, "manage_lore", "lore_page:%{_lorePage}%")
+					send "&cStopped."
+					stop
+				else:
+					set {_ID} to metadata tag "gens;editing_id" of player
+					if {gens::gen::%{_ID}%.lore} contains "$no_lore$":
+						set {gens::gen::%{_ID}%.lore} to message
+					else:
+						set {gens::gen::%{_ID}%.lore} to "%{gens::gen::%{_ID}%.lore}%`%message%"
+					send "&aSuccesfully added lore line %message%&a."
+					genCreatorGUIs(player, "manage_lore", "lore_page:%{_lorePage}%")
+					delete metadata tag "chatUsage" of player
+					delete metadata tag "gens;lore;adding_lore_line" of player
+					delete metadata tag "gens;lore;editing_lore_page" of player
+				stop
+			if metadata tag "gens;lore;editing_lore_line" of player is set:
+				set {_lorePage} to metadata tag "gens;lore;editing_lore_page" of player
+				if {_message} = "end":
+					delete metadata tag "chatUsage" of player
+					delete metadata tag "gens;lore;editing_lore_line" of player
+					delete metadata tag "gens;lore;editing_lore_page" of player
+					genCreatorGUIs(player, "manage_lore", "lore_page:%{_lorePage}%")
+					send "&cStopped."
+					stop
+				else:
+					set {_ID} to metadata tag "gens;editing_id" of player
+					set {_loreLineID} to "%metadata tag "gens;lore;editing_lore_line" of player%" parsed as integer
+					set {_lore::*} to split {gens::gen::%{_ID}%.lore} by "`"
+					loop (size of {_lore::*}) times:
+						loop-value != {_loreLineID}:
+							set {_newlore::%loop-value%} to {_lore::%loop-value%}
+						else:
+							set {_newlore::%loop-value%} to message
+					set {_lore} to "%{_newlore::*}%"
+					replace all ", " and " and " with "`" in {_lore}
+					set {gens::gen::%{_ID}%.lore} to {_lore}
+					send "&aSuccesfully edited lore line &2%{_loreLineID}% &ato %message%&a."
+					genCreatorGUIs(player, "manage_lore", "lore_page:%{_lorePage}%")
+					delete metadata tag "chatUsage" of player
+					delete metadata tag "gens;lore;editing_lore_line" of player
+					delete metadata tag "gens;lore;editing_lore_page" of player
+				stop
+			if metadata tag "gens;lore;confirm_delete_lore_line" of player is set:
+				set {_lorePage} to metadata tag "gens;lore;editing_lore_page" of player
+				if {_message} = "end":
+					delete metadata tag "chatUsage" of player
+					delete metadata tag "gens;lore;confirm_delete_lore_line" of player
+					delete metadata tag "gens;lore;editing_lore_page" of player
+					genCreatorGUIs(player, "manage_lore", "lore_page:%{_lorePage}%")
+					send "&cStopped."
+					stop
+				else:
+					set {_ID} to metadata tag "gens;editing_id" of player
+					set {_loreLineID} to "%metadata tag "gens;lore;confirm_delete_lore_line" of player%" parsed as integer
+					set {_lore::*} to split {gens::gen::%{_ID}%.lore} by "`"
+					loop (size of {_lore::*}) times:
+						loop-value != {_loreLineID}:
+							set {_newlore::%loop-value%} to {_lore::%loop-value%}
+					set {_lore} to "%{_newlore::*}%"
+					replace all ", " and " and " with "`" in {_lore}
+					if {_lore} = "":
+						set {_lore} to "$no_lore$"
+					if {_lore} is not set:
+						set {_lore} to "$no_lore$"
+					if {_lore} = "<none>":
+						set {_lore} to "$no_lore$"
+					set {gens::gen::%{_ID}%.lore} to {_lore}
+					send "&aSuccesfully deleted lore line &2%{_loreLineID}%."
+					genCreatorGUIs(player, "manage_lore", "lore_page:%{_lorePage}%")
+					delete metadata tag "chatUsage" of player
+					delete metadata tag "gens;lore;confirm_delete_lore_line" of player
+					delete metadata tag "gens;lore;editing_lore_page" of player
+				stop
+			if metadata tag "gens;selected_new_gen_block_type" of player is set:
+				if {_message} = "end":
+					delete metadata tag "chatUsage" of player
+					delete metadata tag "gens;selected_new_gen_block_type" of player
+					genCreatorGUIs(player, "edit_gen", "")
+					send "&cStopped."
+					stop
+				else:
+					set {_ID} to metadata tag "gens;editing_id" of player
+					set {_blocks::*} to blocks
+					set {_itemType} to message parsed as itemtype
+					if {_blocks::*} contains {_itemType}:
+						set {gens::gen::%{_ID}%.item_type} to {_itemType}
+						send "&aSuccesfully set block type too %message%&a."
+						genCreatorGUIs(player, "edit_gen", "")
+						delete metadata tag "chatUsage" of player
+						delete metadata tag "gens;selected_new_gen_block_type" of player
+					else:
+						send "&cInvalid Block!"
+				stop
+ 
+		if {_chatUsage} is set: # Gen Item Edit/Creator
+			# Handle Front Page
+			if metadata tag "gens;items;selected_new_item_id" of player is set:
+				if {_message} = "end":
+					delete metadata tag "chatUsage" of player
+					delete metadata tag "gens;items;selected_new_item_id" of player
+					send "&cStopped."
+					stop
+				replace all " " with "_" in {_message}
+				set {_message} to lowercase {_message}
+				{gens::items::item_ids::*} does not contain {_message}:
+					add {_message} to {gens::items::item_ids::*}
+					set {gens::items::item::%{_message}%.item_type} to diamond
+					set {gens::items::item::%{_message}%.name} to "&bDiamond"
+					set {gens::items::item::%{_message}%.lore} to "$empty$`&2Sell Price: $sell_price$"
+					set {gens::items::item::%{_message}%.sell_price} to 1
+					send "&aGen Succesfully Created With ID %{_message}%."
+					set metadata tag "gens;items;editing_id" of player to "%{_message}%"
+					itemCreatorGUIs(player, "edit_item", "")
+					delete metadata tag "chatUsage" of player
+					delete metadata tag "gens;items;selected_new_item_id" of player
+				else:
+					send "&cThis gen ID already exists!"
+				stop
+			if metadata tag "gens;items;selected_item_edit_id" of player is set:
+				if {_message} = "end":
+					delete metadata tag "chatUsage" of player
+					delete metadata tag "gens;items;selected_item_edit_id" of player
+					send "&cStopped."
+					stop
+				replace all " " with "_" in {_message}
+				set {_message} to lowercase {_message}
+				{gens::items::item_ids::*} contains {_message}:
+					send "&aGen Succesfully Selected With ID %{_message}%."
+					set metadata tag "gens;items;editing_id" of player to "%{_message}%"
+					itemCreatorGUIs(player, "edit_item", "")
+					delete metadata tag "chatUsage" of player
+					delete metadata tag "gens;items;selected_item_edit_id" of player
+				else:
+					send "&cThis gen ID doesn't exist!"
+				stop
+			if metadata tag "gens;items;selected_delete_item_id" of player is set:
+				if {_message} = "end":
+					delete metadata tag "chatUsage" of player
+					delete metadata tag "gens;items;selected_delete_item_id" of player
+					send "&cStopped."
+					stop
+				replace all " " with "_" in {_message}
+				{gens::items::item_ids::*} contains {_message}:
+					loop (size of {gens::gen_ids::*}) times:
+						set {_ID} to {gens::gen_ids::%loop-value%}
+						if {gens::gen::%{_ID}%.drop_item_id} = message:
+							add {_ID} to {_gensUsingID::*}
+					{_gensUsingID::*} is not set:
+						remove {_message} from {gens::items::item_ids::*}
+						delete {gens::items::item::%{_message}%.item_type}
+						delete {gens::items::item::%{_message}%.name}
+						delete {gens::items::item::%{_message}%.lore}
+						delete {gens::items::item::%{_message}%.sell_price}
+						send "&aGen With ID %{_message}% Succesfully Deleted."
+						delete metadata tag "chatUsage" of player
+						delete metadata tag "gens;items;selected_delete_item_id" of player
+					else:
+						send "&cPlease change the Drop Item ID on the following gens before you can delete this:"
+						send "&2IDs:"
+						send "    &a%{_gensUsingID::*}%"
+				else:
+					send "&cItem ID %{_message}% doesn't exist!"
+				stop
+ 
+			# Handle Gen Editor
+			if metadata tag "gens;items;selected_new_item_name" of player is set:
+				if {_message} = "end":
+					delete metadata tag "chatUsage" of player
+					delete metadata tag "gens;items;selected_new_item_name" of player
+					itemCreatorGUIs(player, "edit_item", "")
+					send "&cStopped."
+					stop
+				else:
+					set {_ID} to metadata tag "gens;items;editing_id" of player
+					set {gens::items::item::%{_ID}%.name} to message
+					send "&aSuccesfully set name too %colored message%&a."
+					itemCreatorGUIs(player, "edit_item", "")
+					delete metadata tag "chatUsage" of player
+					delete metadata tag "gens;items;selected_new_item_name" of player
+				stop
+			if metadata tag "gens;items;selected_new_item_type" of player is set:
+				if {_message} = "end":
+					delete metadata tag "chatUsage" of player
+					delete metadata tag "gens;items;selected_new_item_type" of player
+					itemCreatorGUIs(player, "edit_item", "")
+					send "&cStopped."
+					stop
+				else:
+					set {_ID} to metadata tag "gens;items;editing_id" of player
+					set {_items::*} to items
+					set {_itemType} to message parsed as itemtype
+					if {_items::*} contains {_itemType}:
+						set {gens::items::item::%{_ID}%.item_type} to {_itemType}
+						send "&aSuccesfully set item type too %message%&a."
+						itemCreatorGUIs(player, "edit_item", "")
+						delete metadata tag "chatUsage" of player
+						delete metadata tag "gens;items;selected_new_item_type" of player
+					else:
+						send "&cInvalid Item!"
+				stop
+			if metadata tag "gens;items;selected_new_sell_price" of player is set:
+				if {_message} = "end":
+					delete metadata tag "chatUsage" of player
+					delete metadata tag "gens;items;selected_new_sell_price" of player
+					itemCreatorGUIs(player, "edit_item", "")
+					send "&cStopped."
+					stop
+				else:
+					set {_ID} to metadata tag "gens;items;editing_id" of player
+					set {_price} to message parsed as number
+					if {_price} is set:
+						{_price} >= 1:
+							set {gens::items::item::%{_ID}%.sell_price} to message
+							send "&aSuccesfully set sell price too %message%&a."
+							itemCreatorGUIs(player, "edit_item", "")
+							delete metadata tag "chatUsage" of player
+							delete metadata tag "gens;items;selected_new_sell_price" of player
+						else:
+							send "&cNumber must be greater than or equal to 1."
+					else:
+						send "&cText is not a Number!"
+				stop
+			if metadata tag "gens;items;lore;adding_lore_line" of player is set:
+				set {_lorePage} to metadata tag "gens;items;lore;editing_lore_page" of player
+				if {_message} = "end":
+					delete metadata tag "chatUsage" of player
+					delete metadata tag "gens;items;lore;adding_lore_line" of player
+					delete metadata tag "gens;items;lore;editing_lore_page" of player
+					itemCreatorGUIs(player, "manage_lore", "lore_page:%{_lorePage}%")
+					send "&cStopped."
+					stop
+				else:
+					set {_ID} to metadata tag "gens;items;editing_id" of player
+					if {gens::items::item::%{_ID}%.lore} contains "$no_lore$":
+						set {gens::items::item::%{_ID}%.lore} to message
+					else:
+						set {gens::items::item::%{_ID}%.lore} to "%{gens::items::item::%{_ID}%.lore}%`%message%"
+					send "&aSuccesfully added lore line %message%&a."
+					itemCreatorGUIs(player, "manage_lore", "lore_page:%{_lorePage}%")
+					delete metadata tag "chatUsage" of player
+					delete metadata tag "gens;items;lore;adding_lore_line" of player
+					delete metadata tag "gens;items;lore;editing_lore_page" of player
+				stop
+			if metadata tag "gens;items;lore;editing_lore_line" of player is set:
+				set {_lorePage} to metadata tag "gens;items;lore;editing_lore_page" of player
+				if {_message} = "end":
+					delete metadata tag "chatUsage" of player
+					delete metadata tag "gens;items;lore;editing_lore_line" of player
+					delete metadata tag "gens;items;lore;editing_lore_page" of player
+					itemCreatorGUIs(player, "manage_lore", "lore_page:%{_lorePage}%")
+					send "&cStopped."
+					stop
+				else:
+					set {_ID} to metadata tag "gens;items;editing_id" of player
+					set {_loreLineID} to "%metadata tag "gens;items;lore;editing_lore_line" of player%" parsed as integer
+					set {_lore::*} to split {gens::items::item::%{_ID}%.lore} by "`"
+					loop (size of {_lore::*}) times:
+						loop-value != {_loreLineID}:
+							set {_newlore::%loop-value%} to {_lore::%loop-value%}
+						else:
+							set {_newlore::%loop-value%} to message
+					set {_lore} to "%{_newlore::*}%"
+					replace all ", " and " and " with "`" in {_lore}
+					set {gens::items::item::%{_ID}%.lore} to {_lore}
+					send "&aSuccesfully edited lore line &2%{_loreLineID}% &ato %message%&a."
+					itemCreatorGUIs(player, "manage_lore", "lore_page:%{_lorePage}%")
+					delete metadata tag "chatUsage" of player
+					delete metadata tag "gens;items;lore;editing_lore_line" of player
+					delete metadata tag "gens;items;lore;editing_lore_page" of player
+				stop
+			if metadata tag "gens;items;lore;confirm_delete_lore_line" of player is set:
+				set {_lorePage} to metadata tag "gens;items;lore;editing_lore_page" of player
+				if {_message} = "end":
+					delete metadata tag "chatUsage" of player
+					delete metadata tag "gens;items;lore;confirm_delete_lore_line" of player
+					delete metadata tag "gens;items;lore;editing_lore_page" of player
+					itemCreatorGUIs(player, "manage_lore", "lore_page:%{_lorePage}%")
+					send "&cStopped."
+					stop
+				else:
+					set {_ID} to metadata tag "gens;items;editing_id" of player
+					set {_loreLineID} to "%metadata tag "gens;items;lore;confirm_delete_lore_line" of player%" parsed as integer
+					set {_lore::*} to split {gens::items::item::%{_ID}%.lore} by "`"
+					loop (size of {_lore::*}) times:
+						loop-value != {_loreLineID}:
+							set {_newlore::%loop-value%} to {_lore::%loop-value%}
+					set {_lore} to "%{_newlore::*}%"
+					replace all ", " and " and " with "`" in {_lore}
+					if {_lore} = "":
+						set {_lore} to "$no_lore$"
+					if {_lore} is not set:
+						set {_lore} to "$no_lore$"
+					if {_lore} = "<none>":
+						set {_lore} to "$no_lore$"
+					set {gens::items::item::%{_ID}%.lore} to {_lore}
+					send "&aSuccesfully deleted lore line &2%{_loreLineID}%."
+					itemCreatorGUIs(player, "manage_lore", "lore_page:%{_lorePage}%")
+					delete metadata tag "chatUsage" of player
+					delete metadata tag "gens;items;lore;confirm_delete_lore_line" of player
+					delete metadata tag "gens;items;lore;editing_lore_page" of player
+				stop
+		stop
+	else:
+		# handle your Chat Skript Here If You Have One.
+#border function use in my own shop when i figure out how it works
+function getBorderSlots(A: int) :: integers:
+	{_A} = 3:
+		return (all integers between 0 and 9), (all integers between 17 and 26)
+	{_A} = 4:
+		return (all integers between 0 and 9), 17, 18, (all integers between 26 and 35)
+	{_A} = 5:
+		return (all integers between 0 and 9), 17, 18, 26, 27, (all integers between 35 and 44)
+	{_A} = 6:
+		return (all integers between 0 and 9), 17, 18, 26, 27, 35, 36, (all integers between 44 and 53)
+#on right click event for upgrading gens
+on right click:
+	player's held item is set:
+		set {_heldItem} to player's held item
+	{_heldItem} is set:
+		if string tag "minecraft:custom_data;gens;item_data;type" of nbt of {_heldItem} = "drop":
+			cancel event
+	if player is sneaking:
+		if event-block is set:
+			set {_n} to nbt of event-block
+			if string tag "minecraft:custom_data;gens;block_data;id" of {_n} is set:
+				string tag "minecraft:custom_data;gens;block_data;owner" of nbt of event-block = player's uuid:
+					{gens::%player's uuid%::placed_gen_locations::*} contains location of event-block:
+						set {_genID} to string tag "minecraft:custom_data;gens;block_data;id" of {_n}
+						if {gens::gen::%{_genID}%.upgrade_into_id} is set:
+							if {gens::gen::%{_genID}%.upgrade_price} > 0:
+								set {_upgradePrice} to {gens::gen::%{_genID}%.upgrade_price}
+								set {_balance} to managePlayerBalance(player, "get", "") parsed as number
+								{_balance} >= {_upgradePrice}:
+									managePlayerBalance(player, "remove", "amount:%{_upgradePrice}%")
+									send "&aGen Upgraded!" to player
+									placeGen(player, {gens::gen::%{_genID}%.upgrade_into_id}, location of event-block)
+								else:
+									send "&cYou can't afford this!" to player
+							else:
+								send "&cThis gen is maxxed." to player
+						else:
+							send "&cThis gen is maxxed." to player
+				else:
+					send "&cThis isn't your gen!" to player
+#event for placing gens
+on place:
+	player's held item is set:
+		set {_heldItem} to player's held item
+	{_heldItem} is set:
+		if string tag "minecraft:custom_data;gens;item_data;type" of nbt of {_heldItem} = "gen":
+			set {_genCap} to managePlayerGensCount(player, "get", "")
+			set {_genCap} to "%{_genCap}%" parsed as integer
+			set {_placedGens} to "%size of {gens::%player's uuid%::placed_gen_locations::*}%" parsed as integer
+			{_placedGens} is not set:
+				set {_placedGens} to 0
+			if {_placedGens} < {_genCap}:
+				set {_ID} to string tag "minecraft:custom_data;gens;item_data;id" of nbt of {_heldItem}
+				wait 1 tick
+				add location of event-block to {gens::%player's uuid%::placed_gen_locations::*}
+				placeGen(player, {_ID}, location of event-block)
+			else:
+				cancel event
+				send "&cYou are at the gen cap!" to player
+#loop for something ?what?
+every 0.1 seconds:
+	loop all players:
+		set {_P} to loop-player
+		{gens::%{_P}'s uuid%::placed_gen_locations::*} is set:
+			(size of {gens::%{_P}'s uuid%::placed_gen_locations::*}) > 0:
+				loop (size of {gens::%{_P}'s uuid%::placed_gen_locations::*}) times:
+					set {_block} to block at {gens::%{_P}'s uuid%::placed_gen_locations::%loop-value-2%}
+					set {_n} to nbt of {_block}
+					set {_genID} to string tag "minecraft:custom_data;gens;block_data;id" of {_n}
+					set {_time} to string tag "minecraft:custom_data;gens;block_data;time" of {_n} parsed as number
+					add 0.1 to {_time}
+					set {_genDrop} to {gens::gen::%{_genID}%.drop_item_id}
+					set {_dropAmount} to {gens::gen::%{_genID}%.drop_amount}
+					{_time} >= {gens::gen::%{_genID}%.drop_time}:
+						set {_dropItem} to getGenDropItem({_genDrop}, "owner:%{_P}'s uuid%")
+						drop {_dropAmount} of {_dropItem} at location 1 block above {_block} without velocity
+						set string tag "minecraft:custom_data;gens;block_data;time" of nbt of {_block} to "%({_time}-{gens::gen::%{_genID}%.drop_time})%"
+					else:
+						set string tag "minecraft:custom_data;gens;block_data;time" of nbt of {_block} to "%{_time}%"
+#pickup only items that you own (drops)
+on pickup:
+	if string tag "minecraft:custom_data;gens;techincal_flags;owner" of nbt of event-item is set:
+		if string tag "minecraft:custom_data;gens;techincal_flags;owner" of nbt of event-item != player's uuid:
+			cancel event
+		else:
+			delete string tag "minecraft:custom_data;gens;techincal_flags;owner" of nbt of event-item
+#cancel breaking a gen
+on break:
+	if string tag "minecraft:custom_data;gens;block_data;id" of nbt of event-block is set:
+		cancel event
+#used for instabreaking gens (maybe add having to shift and for upgrade too)
+on left click:
+	if string tag "minecraft:custom_data;gens;block_data;id" of nbt of event-block is set:
+		string tag "minecraft:custom_data;gens;block_data;owner" of nbt of event-block = player's uuid:
+			{gens::%player's uuid%::placed_gen_locations::*} contains location of event-block:
+				set {_genID} to string tag "minecraft:custom_data;gens;block_data;id" of nbt of event-block
+				set {_genItem} to getGenItem({_genID})
+				remove location of event-block from {gens::%player's uuid%::placed_gen_locations::*}
+				set block at location of event-block to air
+				give {_genItem} to player
+			else:
+				set block at location of event-block to air
+		else:
+			cancel event
+			send "&cThis isn't your gen!" to player
+			set {_p} to string tag "minecraft:custom_data;gens;block_data;owner" of nbt of event-block parsed as offlineplayer
+			{gens::%{_p}'s uuid%::placed_gen_locations::*} does not contain location of event-block:
+				set block at location of event-block to air
+#function to place a generator
+function placeGen(P: player, ID: string, loc: location):
+	set {_Block} to "%{gens::gen::%{_ID}%.item_type}%" parsed as itemtype
+	set {_n} to blank nbt compound
+	set string tag "minecraft:custom_data;gens;block_data;id" of {_n} to {_ID}
+	set string tag "minecraft:custom_data;gens;block_data;type" of {_n} to "gen"
+	set string tag "minecraft:custom_data;gens;block_data;owner" of {_n} to {_P}'s uuid
+	set string tag "minecraft:custom_data;gens;block_data;time" of {_n} to "0"
+	set nbt-block at {_loc} to {_Block} with nbt {_n}
+#tab comps of /sell
+on tab complete of "/sell":
+	if player has permission "op":
+		{gens::items::item_ids::*} is set:
+			set tab completions for position 1 to {gens::items::item_ids::*}
+#/sell command def
+command /sell [<text>]:
+	trigger:
+		set {_moneyGained} to 0
+		loop player's inventory:
+			set {_item} to loop-value
+			if string tag "minecraft:custom_data;gens;item_data;type" of nbt of {_item} is set:
+				set {_ID} to string tag "minecraft:custom_data;gens;item_data;id" of nbt of {_item}
+				if string tag "minecraft:custom_data;gens;item_data;type" of nbt of {_item} = "drop":
+					arg-1 is not set:
+						set {_amt} to item amount of {_item}
+						set {_sellPrice} to "%{gens::items::item::%{_ID}%.sell_price}%" parsed as number
+						set loop-value to air
+						add {_amt}*{_sellPrice} to {_moneyGained}
+					else if {_ID} = arg-1:
+						set {_amt} to item amount of {_item}
+						set {_sellPrice} to "%{gens::items::item::%{_ID}%.sell_price}%" parsed as number
+						set loop-value to air
+						add {_amt}*{_sellPrice} to {_moneyGained}
+		{_moneyGained} = 0:
+			send "&cNo Items To Be Sold Found." to player
+		else:
+			managePlayerBalance(player, "add", "amount:%{_moneyGained}%")
+			if arg-1 is set:
+				send "&aSold all %colored {gens::items::item::%arg-1%.name}% &afor &2+$%{_moneyGained}%&a." to player
+			else:
+				send "&aSold all items in your inventory for &2+$%{_moneyGained}%&a." to player
+#/resetgens? for what?
+command /resetGens <offlineplayer>:
+	permission: op
+	trigger:
+		delete {gens::%arg-1's uuid%::placed_gen_locations::*}

@@ -1,0 +1,57 @@
+on tab complete of "/sell":
+	if player has permission "op":
+		{gens::items::item_ids::*} is set:
+			set tab completions for position 1 to {gens::items::item_ids::*}
+command /sell [<text>]:
+	trigger:
+		set {_moneyGained} to 0
+		loop player's inventory:
+			set {_item} to loop-value
+			if string tag "minecraft:custom_data;gens;item_data;type" of nbt of {_item} is set:
+				set {_ID} to string tag "minecraft:custom_data;gens;item_data;id" of nbt of {_item}
+				if string tag "minecraft:custom_data;gens;item_data;type" of nbt of {_item} = "drop":
+					arg-1 is not set:
+						set {_amt} to item amount of {_item}
+						set {_sellPrice} to "%{gens::items::item::%{_ID}%.sell_price}%" parsed as number
+						set loop-value to air
+						add {_amt}*{_sellPrice} to {_moneyGained}
+					else if {_ID} = arg-1:
+						set {_amt} to item amount of {_item}
+						set {_sellPrice} to "%{gens::items::item::%{_ID}%.sell_price}%" parsed as number
+						set loop-value to air
+						add {_amt}*{_sellPrice} to {_moneyGained}
+		{_moneyGained} = 0:
+			send "&cNo Items To Be Sold Found." to player
+		else:
+			managePlayerBalance(player, "add", "amount:%{_moneyGained}%")
+			if arg-1 is set:
+				send "&aSold all %colored {gens::items::item::%arg-1%.name}% &afor &2+$%{_moneyGained}%&a." to player
+			else:
+				send "&aSold all items in your inventory for &2+$%{_moneyGained}%&a." to player
+
+
+                used 
+
+		loop slots of {_inv}:
+			set {_item} to loop-value
+			if {_item} is not air:
+				set {_amt} to amount of {_item}
+				if string tag "minecraft:custom_data;gens;item_data;type" of nbt of {_item} is set:
+					set {_type} to string tag "minecraft:custom_data;gens;item_data;type" of nbt of {_item}
+					set {_id} to string tag "minecraft:custom_data;gens;item_data;id" of nbt of {_item}
+					if {_type} = "drop":
+						set {_price} to "%{gens::items::item::%{_id}%.sell_price}%" parsed as number
+						if {_price} > 0:
+							add {_amt} * {_price} to {_moneyGained}
+							remove {_item} from {_inv}
+							send "&aSold %{_amt}%x %{colored {gens::items::item::%{_id}%.name}}% for &2+$%{_amt} * {_price}%&a." to player
+		if {_moneyGained} = 0:	
+			send "&eNo sellable items found in the chest." to player
+			stop
+		#multis
+		if {_mult} is set:
+			set {_moneyGained} to {_moneyGained} * {_mult}
+			send "&aSell Wand Multiplier: &6%{_mult}%x&a." to player
+		managePlayerBalance(player, "add", "amount:%{_moneyGained}%")
+		send "&aYou sold items for &2+$%{_moneyGained}%&a." to player
+
