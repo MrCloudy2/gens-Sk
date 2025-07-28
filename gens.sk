@@ -84,7 +84,41 @@ on right click on chest:
 			else:
 				send "&cNo money gained from selling items." to player
 							
-
+on right click on hopper:
+	if player is sneaking:
+		set {_wand} to player's tool
+		if {_wand} is not a name tag:
+			stop
+		set {_mult} to int tag "minecraft:custom_data;Multi" of nbt of {_wand}
+		if {_mult} is not set:
+			send "&cThis is not a valid Sell Wand." to player
+			stop
+		set {_moneyGained} to 0
+		set {_hasSellableItems} to false
+		set {_loc} to location of event-block
+		loop inventory of event-block:
+			set {_item} to loop-value
+			if {_item} is not air:
+				set {_amt} to amount of {_item}
+				if string tag "minecraft:custom_data;gens;item_data;type" of nbt of {_item} is set:
+					set {_type} to string tag "minecraft:custom_data;gens;item_data;type" of nbt of {_item}
+					set {_id} to string tag "minecraft:custom_data;gens;item_data;id" of nbt of {_item}
+					if {_type} = "drop":
+						set {_price} to "%{gens::items::item::%{_id}%.sell_price}%" parsed as number
+						set {_price} to {_price} * {_mult}
+						if {_price} > 0:
+							add {_amt} * {_price} to {_moneyGained}
+							remove {_item} from inventory of event-block
+							set {_hasSellableItems} to true
+		if {_hasSellableItems} is false:
+			send "&cNo sellable items found in the hopper." to player
+		else:
+			if {_moneyGained} > 0:
+				managePlayerBalance(player, "add", "amount:%{_moneyGained}%")
+				send "&aYou gained &2+$%{_moneyGained}%&a from selling items in the hopper." to player
+			else:
+				send "&cNo money gained from selling items." to player
+							
 
 		
 		
