@@ -99,19 +99,27 @@ on right click on chest:
 
 
 # /shop command functionlaity (fix corners with alredy implemented function for corners)
+function open_shop(P: player):
+	# Create a new chest inventory with 3 rows
+	set {_gui} to a new chest inventory with 3 row named "&6Shop"
+	# Set border slots to a colored glass pane
+	set slot getBorderSlots(3) of {_gui} to lime stained glass pane named "&7"
+	# Add items to the shop GUI
+	set slot 10 of {_gui} to stone named "&aBuilding Blocks"
+	set slot 12 of {_gui} to name tag named "&eSell Wands"
+	set slot 14 of {_gui} to hopper named "&dSpecial"
+	set slot 16 of {_gui} to white wool named "&fGenerators"
+	# Open the GUI for the player
+	open {_gui} to {_P}
+	
 command /shop:
+	permission: gens.shop
 	trigger:
-		set {_gui} to a new chest inventory with 3 row named "&6Server Shop"
-		set slot getBorderSlots(3) of {_gui} to lime stained glass pane named "&7"
-		set slot 10 of {_gui} to stone named "&aBuilding Blocks"
-		set slot 12 of {_gui} to name tag named "&eSell Wands"
-		set slot 14 of {_gui} to hopper named "&dSpecial"
-		set slot 16 of {_gui} to white wool named "&fGenerators"
-		open {_gui} to player
+		open_shop(player)
 
 on inventory click:
 	#fisrst shop menu
-	name of event-inventory = "&6Server Shop"
+	name of event-inventory = "&6Shop"
 	cancel event
 	set {_item} to event-item
 	if {_item} is stone named "&aBuilding Blocks":
@@ -127,6 +135,7 @@ function openBuildingBlocksShop(P: player):
 	
 	set {_gui} to a new chest inventory with 6 row named "&aBuilding Blocks Shop"
 	# Example items, add more as needed
+	set slot getBorderSlots(6) of {_gui} to purple stained glass pane named "&7"
 	set slot 10 of {_gui} to stone named "&fStone" with lore "&aPrice: $10", "&7Click to buy!"
 	set {_stoneprice} to 10
 	set slot 11 of {_gui} to dirt named "&fDirt" with lore "&aPrice: $5", "&7Click to buy!"
@@ -144,6 +153,7 @@ function openBuildingBlocksShop(P: player):
 	set slot 24 of {_gui} to sea_lantern named "&fSea Lantern" with lore "&aPrice: $350", "&7Click to buy!"
 	set slot 25 of {_gui} to prismarine named "&fPrismarine" with lore "&aPrice: $400", "&7Click to buy!"
 	set slot 28 of {_gui} to ender_chest named "&fEnder Chest" with lore "&aPrice: $500", "&7Click to buy!"
+	set slot 47 of {_gui} to oak fence gate named "&bBack"
 	set slot 49 of {_gui} to barrier named "&cClose Shop" with lore "&7Click to close the shop."
 	set slot 45 of {_gui} to arrow named "&aPrevious Page" with lore "&7Click to go to the previous page."
 	set slot 53 of {_gui} to arrow named "&aNext Page" with lore "&7Click to go to the next page."
@@ -152,15 +162,20 @@ function openBuildingBlocksShop(P: player):
 	open {_gui} to {_P}
 #sellwand shop (emplty for now)
 function openSellWandsShop(P: player):
-	
 	set {_gui} to a new chest inventory with 6 row named "&eSell Wands Shop"
 	# Example items, add more as needed
+	set slot getBorderSlots(6) of {_gui} to purple stained glass pane named "&7"
 	set slot 10 of {_gui} to name tag named "&eSell Wand 1x" with lore "&aPrice: $10000", "&7Click to buy!"
 	open {_gui} to {_P}
+	set slot 47 of {_gui} to oak fence gate named "&bBack"
+	set slot 49 of {_gui} to barrier named "&cClose Shop" with lore "&7Click to close the shop."
+	set slot 45 of {_gui} to arrow named "&aPrevious Page" with lore "&7Click to go to the previous page."
+	set slot 53 of {_gui} to arrow named "&aNext Page" with lore "&7Click to go to the next page."
 #special shop for redstone and other components
 function openSpecialShop(P: player):
 	set {_gui} to a new chest inventory with 6 row named "&dSpecial Shop"
 	# Example items, add more as needed
+	set slot getBorderSlots(6) of {_gui} to purple stained glass pane named "&7"
 	set slot 10 of {_gui} to hopper named "&dHopper" with lore "&aPrice: $1000", "&7Click to buy!"
 	set slot 11 of {_gui} to water_bucket named "&dWater Bucket" with lore "&aPrice: $100", "&7Click to buy!"
 	set slot 12 of {_gui} to lava_bucket named "&dLava Bucket" with lore "&aPrice: $500", "&7Click to buy!"
@@ -174,6 +189,7 @@ function openSpecialShop(P: player):
 	set slot 22 of {_gui} to comparator named "&dRedstone Comparator" with lore "&aPrice: $300", "&7Click to buy!"
 	set slot 23 of {_gui} to redstone_torch named "&dRedstone Torch" with lore "&aPrice: $35", "&7Click to buy!"
 	set slot 24 of {_gui} to redstone_block named "&dRedstone Block" with lore "&aPrice: $270", "&7Click to buy!"
+	set slot 47 of {_gui} to oak fence gate named "&bBack"
 	set slot 49 of {_gui} to barrier named "&cClose Shop" with lore "&7Click to close the shop."
 	set slot 45 of {_gui} to arrow named "&aPrevious Page" with lore "&7Click to go to the previous page."
 	set slot 53 of {_gui} to arrow named "&aNext Page" with lore "&7Click to go to the next page."
@@ -196,157 +212,55 @@ function openGenshop(P:player):
 		set lore of {_item} to colored "&ePrice: &a$%{_price}%", "&7Click to buy!"
 		set slot {_slot} of {_gui} to {_item}
 		add 1 to {_slot}
+	set slot 47 of {_gui} to oak fence gate named "&bBack"
 	open {_gui} to {_P}
 on inventory click:
 	name of event-inventory = "&aBuilding Blocks Shop"
 	cancel event
 	set {_item} to event-item
-	if {_item} is stone named "&fStone":
-		set {_price} to 10
-		set {_balance} to managePlayerBalance(player, "get", "") parsed as number
-		if {_balance} >= {_price}:
-			managePlayerBalance(player, "remove", "amount:%{_price}%")
-			give player stone
-			send "&aYou bought Stone for $%{_price}%!"
-		else:
-			send "&cNot enough money!"
-	if {_item} is dirt named "&fDirt":
-		set {_price} to 5
-		set {_balance} to managePlayerBalance(player, "get", "") parsed as number
-		if {_balance} >= {_price}:
-			managePlayerBalance(player, "remove", "amount:%{_price}%")
-			give player dirt
-			send "&aYou bought Dirt for $%{_price}%!"
-		else:
-			send "&cNot enough money!"
-	if {_item} is cobblestone named "&fCobblestone":
-		set {_price} to 8
-		set {_balance} to managePlayerBalance(player, "get", "") parsed as number
-		if {_balance} >= {_price}:
-			managePlayerBalance(player, "remove", "amount:%{_price}%")
-			give player cobblestone
-			send "&aYou bought Cobblestone for $%{_price}%!"
-		else:
-			send "&cNot enough money!"
-	if {_item} is oak_planks named "&fOak Planks":
-		set {_price} to 12
-		set {_balance} to managePlayerBalance(player, "get", "") parsed as number
-		if {_balance} >= {_price}:
-			managePlayerBalance(player, "remove", "amount:%{_price}%")
-			give player oak planks
-			send "&aYou bought Oak Planks for $%{_price}%!"
-		else:
-			send "&cNot enough money!"
-	if {_item} is glass named "&fGlass":
-		set {_price} to 15
-		set {_balance} to managePlayerBalance(player, "get", "") parsed as number
-		if {_balance} >= {_price}:
-			managePlayerBalance(player, "remove", "amount:%{_price}%")
-			give player glass
-			send "&aYou bought Glass for $%{_price}%!"
-		else:
-			send "&cNot enough money!"
-	if {_item} is bricks named "&fBricks":
-		set {_price} to 20
-		set {_balance} to managePlayerBalance(player, "get", "") parsed as number
-		if {_balance} >= {_price}:
-			managePlayerBalance(player, "remove", "amount:%{_price}%")
-			give player bricks
-			send "&aYou bought Bricks for $%{_price}%!"
-		else:
-			send "&cNot enough money!"
-	if {_item} is gold_block named "&fGold Block":
-		set {_price} to 50
-		set {_balance} to managePlayerBalance(player, "get", "") parsed as number
-		if {_balance} >= {_price}:
-			managePlayerBalance(player, "remove", "amount:%{_price}%")
-			give player gold block
-			send "&aYou bought Gold Block for $%{_price}%!"
-		else:
-			send "&cNot enough money!"
-	if {_item} is diamond_block named "&fDiamond Block":
-		set {_price} to 100
-		set {_balance} to managePlayerBalance(player, "get", "") parsed as number
-		if {_balance} >= {_price}:
-			managePlayerBalance(player, "remove", "amount:%{_price}%")
-			give player diamond block
-			send "&aYou bought Diamond Block for $%{_price}%!"
-		else:
-			send "&cNot enough money!"
-	if {_item} is emerald_block named "&fEmerald Block":
-		set {_price} to 150
-		set {_balance} to managePlayerBalance(player, "get", "") parsed as number
-		if {_balance} >= {_price}:
-			managePlayerBalance(player, "remove", "amount:%{_price}%")
-			give player emerald block
-			send "&aYou bought Emerald Block for $%{_price}%!"
-		else:
-			send "&cNot enough money!"
-	if {_item} is obsidian named "&fObsidian":
-		set {_price} to 200
-		set {_balance} to managePlayerBalance(player, "get", "") parsed as number
-		if {_balance} >= {_price}:
-			managePlayerBalance(player, "remove", "amount:%{_price}%")
-			give player obsidian
-			send "&aYou bought Obsidian for $%{_price}%!"
-		else:
-			send "&cNot enough money!"
-	if {_item} is end_stone named "&fEnd Stone":
-		set {_price} to 250
-		set {_balance} to managePlayerBalance(player, "get", "") parsed as number
-		if {_balance} >= {_price}:
-			managePlayerBalance(player, "remove", "amount:%{_price}%")
-			give player end stone
-			send "&aYou bought End Stone for $%{_price}%!"
-		else:
-			send "&cNot enough money!"
-	if {_item} is quartz_block named "&fQuartz Block":
-		set {_price} to 300
-		set {_balance} to managePlayerBalance(player, "get", "") parsed as number
-		if {_balance} >= {_price}:		
-			managePlayerBalance(player, "remove", "amount:%{_price}%")
-			give player quartz block
-			send "&aYou bought Quartz Block for $%{_price}%!"
-		else:
-			send "&cNot enough money!"
-	if {_item} is sea_lantern named "&fSea Lantern":
-		set {_price} to 350
-		set {_balance} to managePlayerBalance(player, "get", "") parsed as number
-		if {_balance} >= {_price}:
-			managePlayerBalance(player, "remove", "amount:%{_price}%")
-			give player sea lantern
-			send "&aYou bought Sea Lantern for $%{_price}%!"
-		else:
-			send "&cNot enough money!"
-	if {_item} is prismarine named "&fPrismarine":
-		set {_price} to 400
-		set {_balance} to managePlayerBalance(player, "get", "") parsed as number
-		if {_balance} >= {_price}:
-			managePlayerBalance(player, "remove", "amount:%{_price}%")
-			give player prismarine
-			send "&aYou bought Prismarine for $%{_price}%!"
-		else:
-			send "&cNot enough money!"
-	if {_item} is ender_chest named "&fEnder Chest":
-		set {_price} to 500
-		set {_balance} to managePlayerBalance(player, "get", "") parsed as number
-		if {_balance} >= {_price}:
-			managePlayerBalance(player, "remove", "amount:%{_price}%")
-			give player ender chest
-			send "&aYou bought Ender Chest for $%{_price}%!"
-		else:
-			send "&cNot enough money!"
+	if {_item} is purple stained glass pane named "&7":
+		stop
 	if {_item} is barrier named "&cClose Shop":
 		close inventory of player
+		stop
 	if {_item} is arrow named "&aPrevious Page":
 		# Handle previous page logic here
+		stop
 	if {_item} is arrow named "&aNext Page":
-		# Handle next page logic here	
+		# Handle next page logic here
+		stop
+	if {_item} is oak fence gate named "&bBack":
+		open_shop(player)
+		stop
+	if {_item} is air:
+		stop
+	#get item price from lore
+	set {_price} to 0
+	set {_lore::*} to lore of {_item}
+	loop {_lore::*}:
+		if loop-value contains "&aPrice: ":
+			set {_raw::*} to loop-value split at "$"
+			set {_priceString} to uncolored {_raw::2}
+			set {_price} to {_priceString} parsed as number
+			
+	set {_balance} to managePlayerBalance(player, "get", "") parsed as number
+	if {_balance} >= {_price}:
+		managePlayerBalance(player, "remove", "amount:%{_price}%")
+		clear lore of {_item}
+		give player {_item}
+		send "&aYou bought &e%colored name of {_item}% &afor &2$%{_price}%!"
+	else:
+		send "&cYou don't have enough money! Need $%{_price}%."
+
 
 on inventory click:
 	name of event-inventory = "&eSell Wands Shop"
 	cancel event
 	set {_item} to event-item
+	if {_item} is purple stained glass pane named "&7":
+		stop
+	if {_item} is air:
+		stop
 	if {_item} is name tag named "&eSell Wand 1x":
 		set {_wandMulti} to 1
 		set {_price} to 10000
@@ -357,134 +271,55 @@ on inventory click:
 			send "&aYou bought a Sell Wand 1x for $%{_price}%!"
 		else:
 			send "&cNot enough money!"
+	if {_item} is barrier named "&cClose Shop":
+		close inventory of player
+	if {_item} is arrow named "&aPrevious Page":
+		# Handle previous page logic here
+		stop
+	if {_item} is arrow named "&aNext Page":
+		# Handle next page logic here
+		stop
+	if {_item} is oak fence gate named "&bBack":
+		open_shop(player)
+		stop
 
 on inventory click:
 	name of event-inventory = "&dSpecial Shop"
 	cancel event
 	set {_item} to event-item
-	if {_item} is hopper named "&dHopper":
-		set {_price} to 1000
-		set {_balance} to managePlayerBalance(player, "get", "") parsed as number
-		if {_balance} >= {_price}:
-			managePlayerBalance(player, "remove", "amount:%{_price}%")
-			give player hopper
-			send "&aYou bought a Hopper for $%{_price}%!"
-		else:
-			send "&cNot enough money!"
-	if {_item} is water_bucket named "&dWater Bucket":
-		set {_price} to 100
-		set {_balance} to managePlayerBalance(player, "get", "") parsed as number
-		if {_balance} >= {_price}:
-			managePlayerBalance(player, "remove", "amount:%{_price}%")
-			give player water bucket
-			send "&aYou bought a Water Bucket for $%{_price}%!"
-		else:
-			send "&cNot enough money!"
-	if {_item} is lava_bucket named "&dLava Bucket":
-		set {_price} to 500
-		set {_balance} to managePlayerBalance(player, "get", "") parsed as number
-		if {_balance} >= {_price}:
-			managePlayerBalance(player, "remove", "amount:%{_price}%")
-			give player lava bucket
-			send "&aYou bought a Lava Bucket for $%{_price}%!"
-		else:
-			send "&cNot enough money!"
-	if {_item} is soul_sand named "&dSoul Sand":
-		set {_price} to 400
-		set {_balance} to managePlayerBalance(player, "get", "") parsed as number
-		if {_balance} >= {_price}:
-			managePlayerBalance(player, "remove", "amount:%{_price}%")
-			give player soul sand
-			send "&aYou bought Soul Sand for $%{_price}%!"
-		else:
-			send "&cNot enough money!"
-	if {_item} is packed_ice named "&dPacked Ice":
-		set {_price} to 1000
-		set {_balance} to managePlayerBalance(player, "get", "") parsed as number
-		if {_balance} >= {_price}:
-			managePlayerBalance(player, "remove", "amount:%{_price}%")
-			give player packed ice
-			send "&aYou bought Packed Ice for $%{_price}%!"
-		else:
-			send "&cNot enough money!"
-	if {_item} is honey_block named "&dHoney Block":
-		set {_price} to 1000
-		set {_balance} to managePlayerBalance(player, "get", "") parsed as number
-		if {_balance} >= {_price}:
-			managePlayerBalance(player, "remove", "amount:%{_price}%")
-			give player honey block
-			send "&aYou bought a Honey Block for $%{_price}%!"
-		else:	
-			send "&cNot enough money!"
-	if {_item} is slime_block named "&dSlime Block":
-		set {_price} to 2000
-		set {_balance} to managePlayerBalance(player, "get", "") parsed as number
-		if {_balance} >= {_price}:
-			managePlayerBalance(player, "remove", "amount:%{_price}%")
-			give player slime block
-			send "&aYou bought a Slime Block for $%{_price}%!"
-		else:
-			send "&cNot enough money!"
-	if {_item} is piston named "&dPiston":
-		set {_price} to 900
-		set {_balance} to managePlayerBalance(player, "get", "") parsed as number
-		if {_balance} >= {_price}:
-			managePlayerBalance(player, "remove", "amount:%{_price}%")
-			give player piston
-			send "&aYou bought a Piston for $%{_price}%!"
-		else:
-			send "&cNot enough money!"
-	if {_item} is redstone named "&dRedstone":
-		set {_price} to 30
-		set {_balance} to managePlayerBalance(player, "get", "") parsed as number
-		if {_balance} >= {_price}:
-			managePlayerBalance(player, "remove", "amount:%{_price}%")
-			give player redstone
-			send "&aYou bought Redstone for $%{_price}%!"
-		else:
-			send "&cNot enough money!"
-	if {_item} is repeater named "&dRedstone Repeater":
-		set {_price} to 100
-		set {_balance} to managePlayerBalance(player, "get", "") parsed as number
-		if {_balance} >= {_price}:
-			managePlayerBalance(player, "remove", "amount:%{_price}%")
-			give player repeater
-			send "&aYou bought a Redstone Repeater for $%{_price}%!"
-		else:
-			send "&cNot enough money!"
-	if {_item} is comparator named "&dRedstone Comparator":
-		set {_price} to 300
-		set {_balance} to managePlayerBalance(player, "get", "") parsed as number
-		if {_balance} >= {_price}:
-			managePlayerBalance(player, "remove", "amount:%{_price}%")
-			give player comparator
-			send "&aYou bought a Redstone Comparator for $%{_price}%!"
-		else:
-			send "&cNot enough money!"
-	if {_item} is redstone torch named "&dRedstone Torch":
-		set {_price} to 35
-		set {_balance} to managePlayerBalance(player, "get", "") parsed as number
-		if {_balance} >= {_price}:
-			managePlayerBalance(player, "remove", "amount:%{_price}%")
-			give player redstone torch
-			send "&aYou bought a Redstone Torch for $%{_price}%!"
-		else:
-			send "&cNot enough money!"
-	if {_item} is redstone block named "&dRedstone Block":
-		set {_price} to 270
-		set {_balance} to managePlayerBalance(player, "get", "") parsed as number
-		if {_balance} >= {_price}:
-			managePlayerBalance(player, "remove", "amount:%{_price}%")
-			give player redstone block
-			send "&aYou bought a Redstone Block for $%{_price}%!"
-		else:
-			send "&cNot enough money!"
+	if {_item} is purple stained glass pane named "&7":
+		stop
 	if {_item} is barrier named "&cClose Shop":
 		close inventory of player
+		stop
 	if {_item} is arrow named "&aPrevious Page":
 		# Handle previous page logic here
+		stop
 	if {_item} is arrow named "&aNext Page":
-		# Handle next page logic here	
+		# Handle next page logic here
+		stop
+	if {_item} is oak fence gate named "&bBack":
+		open_shop(player)
+		stop
+	if {_item} is air:
+		stop
+	#get item price from lore
+	set {_price} to 0
+	set {_lore::*} to lore of {_item}
+	loop {_lore::*}:
+		if loop-value contains "&aPrice: ":
+			set {_raw::*} to loop-value split at "$"
+			set {_priceString} to uncolored {_raw::2}
+			set {_price} to {_priceString} parsed as number
+			
+	set {_balance} to managePlayerBalance(player, "get", "") parsed as number
+	if {_balance} >= {_price}:
+		managePlayerBalance(player, "remove", "amount:%{_price}%")
+		clear lore of {_item}
+		give player {_item}
+		send "&aYou bought &e%colored name of {_item}% &afor &2$%{_price}%!"
+	else:
+		send "&cYou don't have enough money! Need $%{_price}%."
 
 on inventory click:
 	name of event-inventory = "&fGenerators Shop"
@@ -506,9 +341,15 @@ on inventory click:
 		close inventory of player
 	if {_item} is arrow named "&aPrevious Page":
 		# Handle previous page logic here
+		stop
 	if {_item} is arrow named "&aNext Page":
 		# Handle next page logic here
-
+		stop
+	if {_item} is oak fence gate named "&bBack":
+		open_shop(player)
+		stop
+	if {_item} is air:
+		stop
 
 
 #command that lists all the upgrades from one to another gen prices
