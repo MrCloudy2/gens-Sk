@@ -166,6 +166,7 @@ function openSellWandsShop(P: player):
 	# Example items, add more as needed
 	set slot getBorderSlots(6) of {_gui} to purple stained glass pane named "&7"
 	set slot 10 of {_gui} to name tag named "&eSell Wand 1x" with lore "&aPrice: $10000", "&7Click to buy!"
+	set slot 11 of {_gui} to name tag named "&eSell Wand 2x" with lore "&aPrice: $50000", "&7Click to buy!"
 	open {_gui} to {_P}
 	set slot 47 of {_gui} to oak fence gate named "&bBack"
 	set slot 49 of {_gui} to barrier named "&cClose Shop" with lore "&7Click to close the shop."
@@ -245,6 +246,11 @@ on inventory click:
 			
 	set {_balance} to managePlayerBalance(player, "get", "") parsed as number
 	if {_balance} >= {_price}:
+		if {_lastBuy} is set:
+			if difference between {_lastBuy} and now is less than 1 second:
+				send "&cYou can only buy one item every second!" to player
+				stop
+		set {_lastBuy} to now
 		managePlayerBalance(player, "remove", "amount:%{_price}%")
 		clear lore of {_item}
 		give player {_item}
@@ -269,6 +275,18 @@ on inventory click:
 			managePlayerBalance(player, "remove", "amount:%{_price}%")
 			give player custom_sellwand_with_multiplier({_wandMulti})
 			send "&aYou bought a Sell Wand 1x for $%{_price}%!"
+			wait 0.1 seconds
+		else:
+			send "&cNot enough money!"
+	if {_item} is name tag named "&eSell Wand 2x":
+		set {_wandMulti} to 2
+		set {_price} to 50000
+		set {_balance} to managePlayerBalance(player, "get", "") parsed as number
+		if {_balance} >= {_price}:
+			managePlayerBalance(player, "remove", "amount:%{_price}%")
+			give player custom_sellwand_with_multiplier({_wandMulti})
+			send "&aYou bought a Sell Wand 2x for $%{_price}%!"
+			wait 0.1 seconds
 		else:
 			send "&cNot enough money!"
 	if {_item} is barrier named "&cClose Shop":
@@ -311,13 +329,13 @@ on inventory click:
 			set {_raw::*} to loop-value split at "$"
 			set {_priceString} to uncolored {_raw::2}
 			set {_price} to {_priceString} parsed as number
-			
 	set {_balance} to managePlayerBalance(player, "get", "") parsed as number
 	if {_balance} >= {_price}:
 		managePlayerBalance(player, "remove", "amount:%{_price}%")
 		clear lore of {_item}
 		give player {_item}
 		send "&aYou bought &e%colored name of {_item}% &afor &2$%{_price}%!"
+		wait 0.1 seconds
 	else:
 		send "&cYou don't have enough money! Need $%{_price}%."
 
@@ -327,6 +345,7 @@ on inventory click:
 	set {_item} to event-item
 	set {_genID} to string tag "minecraft:custom_data;gens;item_data;id" of nbt of {_item}
 	if {_genID} is set:
+		wait 0.1 seconds
 		set {_price} to {gens::gen::%{_genID}%.shop_price}
 		if {_price} is not set:
 			set {_price} to {gens::initial_price}
@@ -335,6 +354,7 @@ on inventory click:
 			managePlayerBalance(player, "remove", "amount:%{_price}%")
 			give player getGenItem({_genID})
 			send "&aYou bought &e%colored {gens::gen::%{_genID}%.name}% &afor &2$%{_price}%!"
+			wait 0.1 seconds
 		else:
 			send "&cYou don't have enough money! Need $%{_price}%."
 	if {_item} is barrier named "&cClose Shop":
